@@ -33,29 +33,29 @@ func CreateNewUser(c *gin.Context, db *sql.DB) {
 	}
 	isValid, err := validation.IsValidPassword(newUser.Password)
 	if err != nil {
-		error := UserError{
+		userError := UserError{
 			Error: "invalid Password Struct",
 		}
-		c.JSON(http.StatusBadRequest, error)
+		c.JSON(http.StatusBadRequest, userError)
 		return
 	}
 	if !isValid {
-		error := UserError{
+		userError := UserError{
 			Error: "invalid Password Struct",
 		}
-		c.JSON(http.StatusBadRequest, error)
+		c.JSON(http.StatusBadRequest, userError)
 		return
 	}
 
 	userId, err := GetUserIdByName(newUser.Username, db)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		log.Println(err)
 
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error checking for users"})
 		return
 	}
 
-	if userId != -1 {
+	if userId != "" {
 		c.JSON(http.StatusConflict, gin.H{"error": "User Does already exist"})
 		return
 	}
@@ -72,7 +72,7 @@ func CreateNewUser(c *gin.Context, db *sql.DB) {
 		password_hash: hashedPassword,
 	}
 
-	id, uuid, err := CreateUserInDB(userInDB, db)
+	newUserId, err := CreateUserInDB(userInDB, db)
 	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error Creating User"})
@@ -80,8 +80,7 @@ func CreateNewUser(c *gin.Context, db *sql.DB) {
 	}
 	jwtUserData := jwt.JWTUser{
 		Username: userInDB.username,
-		UserId:   int(id),
-		UUID:     uuid,
+		UserId:   newUserId,
 	}
 	jwtToken, err := jwt.CreateToken(jwtUserData)
 	if err != nil {
@@ -121,15 +120,14 @@ func SignIn(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	if !hashing.CheckHashedString(userData.password_hash, credentials.Password) {
+	if !hashing.CheckHashedString(userData.passwordHash, credentials.Password) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Wrong Username Or Password"})
 		return
 	}
 
 	jwtUserData := jwt.JWTUser{
 		Username: userData.username,
-		UserId:   userData.user_id,
-		UUID:     userData.uuid,
+		UserId:   userData.userId,
 	}
 	jwtToken, err := jwt.CreateToken(jwtUserData)
 	if err != nil {
@@ -145,16 +143,18 @@ func SignIn(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, response)
 }
 
-// GetUserByUUID @Summary Get a user by his UUID
-// @Description Get a user by his UUID or return an error
+// GetUserById @Summary Get a user by his id
+// @Description Get a user by his id or return an error
 // @Tags users
 // @Accept json
 // @Produce json
 // @Param user body string true "UUID"
 // @Success 201 {object} user.UserFromDB
 // @Failure 400 {object} user.UserError
+// @Failure 404 {object} user.UserError
+// @Failure 500 {object} user.UserError
 // @Router /users/:uuid [get]
-func GetUserByUUID(c *gin.Context, db *sql.DB) {
+func GetUserById(c *gin.Context, db *sql.DB) {
 
 	uuid := c.Param("uuid")
 	uuid = strings.Trim(uuid, " ")
@@ -163,7 +163,7 @@ func GetUserByUUID(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	userData, err := GetUserByUUIDFromDB(uuid, db)
+	userData, err := GetUserByIdFromDB(uuid, db)
 	if errors.Is(err, sql.ErrNoRows) {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
@@ -190,7 +190,8 @@ func GetUserByUUID(c *gin.Context, db *sql.DB) {
 // @Produce json
 // @Param Authorization header string true "JWT Token"
 // @Success 201 {object} user.UserSuccess
-// @Failure 400 {object} user.UserError
+// @Failure 401 {object} user.UserError
+// @Failure 500 {object} user.UserError
 // @Router /users/:uuid [delete]
 func DeleteUserWithJWT(c *gin.Context, db *sql.DB) {
 
@@ -246,7 +247,7 @@ func UpdateUsername(c *gin.Context, db *sql.DB) {
 	}
 	userId, err := GetUserIdByName(changeUsernameData.Username, db)
 
-	if userId == -1 || err != nil {
+	if userId == "" || err != nil {
 		errorMessage := UserError{
 			Error: "Username is already in use",
 		}
@@ -314,7 +315,7 @@ func UpdateUserPassword(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	userData, err := GetUserById(jwtPayload.UserId, db)
+	userData, err := GetUserByIdFromDB(jwtPayload.UserId, db)
 	if err != nil {
 		errorMessage := UserError{
 			Error: "User not found",
@@ -322,7 +323,7 @@ func UpdateUserPassword(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errorMessage)
 		return
 	}
-	if !hashing.CheckHashedString(userData.password_hash, updatePasswordData.OldPassword) {
+	if !hashing.CheckHashedString(userData.passwordHash, updatePasswordData.OldPassword) {
 
 		errorMessage := UserError{
 			Error: "Your Old password doesnt match",

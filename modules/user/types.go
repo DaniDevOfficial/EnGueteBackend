@@ -37,9 +37,8 @@ type SignInCredentials struct {
 }
 
 type UserFromDB struct {
-	user_id       int
-	uuid          string
-	username      string
-	email         string
-	password_hash string
+	userId       string
+	username     string
+	email        string
+	passwordHash string
 }

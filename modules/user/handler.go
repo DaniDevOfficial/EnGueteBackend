@@ -11,8 +11,8 @@ func RegisterUserRoute(router *gin.Engine, db *sql.DB) {
 }
 
 func registerUserRoutes(router *gin.Engine, db *sql.DB) {
-	router.GET("/users/:uuid", func(c *gin.Context) {
-		GetUserByUUID(c, db)
+	router.GET("/users/:id", func(c *gin.Context) {
+		GetUserById(c, db)
 	})
 	router.DELETE("/users/", func(c *gin.Context) {
 		DeleteUserWithJWT(c, db)

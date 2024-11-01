@@ -2,13 +2,11 @@ package jwt
 
 type JWTUser struct {
 	Username string
-	UserId   int
-	UUID     string
+	UserId   string
 }
 
 type JWTPayload struct {
-	UserId   int
-	UUID     string
+	UserId   string
 	UserName string
 	Exp      int64
 }
