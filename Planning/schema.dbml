@@ -1,91 +1,59 @@
 Table users {
-  id int [pk, increment]  // Auto-incrementing integer primary key
-  uuid UUID [unique, default: 'uuid_generate_v4()']  // UUID with a unique constraint
-  username varchar [not null]  // Username of the user
-  email varchar [unique, not null]  // Unique email for each user
-  password varchar [not null]  // Password for the user
-  created_at timestamp [default: 'CURRENT_TIMESTAMP']  // Timestamp when the user was created
+  user_id UUID [pk, default: "gen_random_uuid()"]
+  name VARCHAR(100) [not null]
+  email VARCHAR(255) [unique, not null]
+  password_hash VARCHAR(255) [not null]
+  created_at TIMESTAMPTZ [default: "CURRENT_TIMESTAMP"]
 }
 
-Table tournaments {
-  id int [pk, increment]  // Auto-incrementing integer primary key
-  uuid UUID [unique, default: 'uuid_generate_v4()']  // UUID with a unique constraint
-  name varchar [not null]  // Tournament name
-  host_id int [not null]  // Reference to users.id (int) for the tournament host
-  point_type varchar [not null, note: 'points, time, distance']  // Type of points in the tournament
-  scoring_method varchar [not null, note: 'highest or lowest']  // Scoring method used in the tournament
-  can_tie boolean [default: false]  // Can the game end in a tie
-  start_date_time timestamp [not null]  // Tournament start date and time
-  is_started boolean [default: false]  // Has the tournament started
-  created_at timestamp [default: 'CURRENT_TIMESTAMP']  // Timestamp when the tournament was created
+Table groups {
+  group_id UUID [pk, default: "gen_random_uuid()"]
+  group_name VARCHAR(100) [not null]
+  created_by UUID
+  created_at TIMESTAMPTZ [default: "CURRENT_TIMESTAMP"]
 }
 
-Table teams {
-  id int [pk, increment]  // Auto-incrementing integer primary key
-  uuid UUID [unique, default: 'uuid_generate_v4()']  // UUID with a unique constraint
-  name varchar [not null]  // Team name
-  tournament_id int [not null]  // Reference to tournaments.id (int) for the tournament
-  created_at timestamp [default: 'CURRENT_TIMESTAMP']  // Timestamp when the team was created
+Table user_groups {
+  user_group_id UUID [pk, default: "gen_random_uuid()"]
+  user_id UUID
+  group_id UUID
+  joined_at TIMESTAMPTZ [default: "CURRENT_TIMESTAMP"]
 }
 
-Table players {
-  id int [pk, increment]  // Auto-incrementing integer primary key
-  uuid UUID [unique, default: 'uuid_generate_v4()']  // UUID with a unique constraint
-  name varchar [not null]  // Player name
-  is_registered boolean [default: false]  // Is the player registered or anonymous
-  user_id int [note: 'Nullable for anonymous players']  // Nullable reference to users.id (int) for registered users
-  team_id int [not null]  // Reference to teams.id (int) for the player's team
-  tournament_id int [not null]  // Reference to tournaments.id (int) for the tournament
-  created_at timestamp [default: 'CURRENT_TIMESTAMP']  // Timestamp when the player was created
+Table meals {
+  meal_id UUID [pk, default: "gen_random_uuid()"]
+  group_id UUID
+  meal_type VARCHAR(50) [not null] // e.g., "Lunch" or "Dinner"
+  dateTime TIMESTAMPTZ [not null]  // Date and time of the meal
+  title VARCHAR(100) [not null]    // Title of the meal
+  notes TEXT                       // Additional notes for the meal
+  closed BOOLEAN [default: "FALSE"] // Whether the meal is closed for sign-ups
+  fulfilled BOOLEAN [default: "FALSE"] // Fulfillment status of the meal
+  created_by UUID
+  created_at TIMESTAMPTZ [default: "CURRENT_TIMESTAMP"]
 }
 
-Table brackets {
-  id int [pk, increment]  // Auto-incrementing integer primary key
-  uuid UUID [unique, default: 'uuid_generate_v4()']  // UUID with a unique constraint
-  tournament_id int [not null]  // Reference to tournaments.id (int) for the tournament
-  type varchar [not null, note: 'single_elimination or others']  // Type of bracket (e.g., single elimination)
-  created_at timestamp [default: 'CURRENT_TIMESTAMP']  // Timestamp when the bracket was created
+Table meal_preferences {
+  preference_id UUID [pk, default: "gen_random_uuid()"]
+  meal_id UUID
+  user_id UUID
+  preference VARCHAR(20) [not null] // e.g., "opt-in", "opt-out", "undecided", "eat later"
+  created_at TIMESTAMPTZ [default: "CURRENT_TIMESTAMP"]
 }
 
-Table rounds {
-  id int [pk, increment]  // Auto-incrementing integer primary key
-  uuid UUID [unique, default: 'uuid_generate_v4()']  // UUID with a unique constraint
-  bracket_id int [not null]  // Reference to brackets.id (int) for the bracket
-  round_number int [not null]  // Round number within the bracket
-  created_at timestamp [default: 'CURRENT_TIMESTAMP']  // Timestamp when the round was created
+Table meal_cooks {
+  meal_cook_id UUID [pk, default: "gen_random_uuid()"]
+  meal_id UUID
+  user_id UUID
 }
 
-Table games {
-  id int [pk, increment]  // Auto-incrementing integer primary key
-  uuid UUID [unique, default: 'uuid_generate_v4()']  // UUID with a unique constraint
-  round_id int [not null]  // Reference to rounds.id (int) for the round
-  team1_id int [not null]  // Reference to teams.id (int) for team 1
-  team2_id int [not null]  // Reference to teams.id (int) for team 2
-  team1_score float [default: 0]  // Score of team 1
-  team2_score float [default: 0]  // Score of team 2
-  winner_id int [note: 'Nullable reference to teams.id for winner']  // Nullable reference to teams.id for the winner
-  is_tie boolean [default: false]  // Did the game end in a tie
-  created_at timestamp [default: 'CURRENT_TIMESTAMP']  // Timestamp when the game was created
-}
-
-Ref: tournaments.host_id > users.id
-
-Ref: teams.tournament_id > tournaments.id
-
-Ref: players.user_id > users.id
-
-Ref: players.team_id > teams.id
-
-Ref: players.tournament_id > tournaments.id
-
-Ref: brackets.tournament_id > tournaments.id
-
-Ref: rounds.bracket_id > brackets.id
-
-Ref: games.round_id > rounds.id
-
-Ref: games.team1_id > teams.id [delete: cascade]
-
-Ref: games.team2_id > teams.id [delete: cascade]
-
-Ref: games.winner_id > teams.id [delete: set null]
+// Relationships
+Ref: groups.created_by > users.user_id
+Ref: user_groups.user_id > users.user_id
+Ref: user_groups.group_id > groups.group_id
+Ref: meals.group_id > groups.group_id
+Ref: meals.created_by > users.user_id
+Ref: meal_preferences.meal_id > meals.meal_id
+Ref: meal_preferences.user_id > users.user_id
+Ref: meal_cooks.meal_id > meals.meal_id
+Ref: meal_cooks.user_id > users.user_id
