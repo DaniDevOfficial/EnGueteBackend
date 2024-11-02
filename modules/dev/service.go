@@ -2,9 +2,9 @@ package dev
 
 import (
 	"database/sql"
+	"enguete/util/jwt"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"wishtournament/util/jwt"
 )
 
 func CheckValidJWT(c *gin.Context) {

@@ -20,6 +20,16 @@ type RequestChangePassword struct {
 	OldPassword string `json:"oldPassword"`
 	NewPassword string `json:"newPassword"`
 }
+
+type ResponseUserGroups struct {
+	Groups []UserGroupsFromDB `json:"userGroups"`
+}
+
+type ResponseUserData struct {
+	Username string `json:"username"`
+	UserID   string `json:"userId"`
+}
+
 type DBNewUser struct {
 	username      string
 	email         string
@@ -37,10 +47,10 @@ type SignInCredentials struct {
 }
 
 type UserFromDB struct {
-	userId       string
-	username     string
-	email        string
-	passwordHash string
+	userId       string `json:"userId"`
+	username     string `json:"username"`
+	email        string `json:"email"`
+	passwordHash string `json:"passwordHash"`
 }
 
 type UserGroupsFromDB struct {

@@ -19,7 +19,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param user body user.RequestNewUser true "Request payload for creating a new user"
-// @Success 201 {object} jwt.JWTUser
+// @Success 201 {object} jwt.JWTTokenResponse
 // @Failure 400 {object} user.UserError
 // @Router /auth/signup [post]
 func CreateNewUser(c *gin.Context, db *sql.DB) {
@@ -87,9 +87,7 @@ func CreateNewUser(c *gin.Context, db *sql.DB) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating JWT"})
 		return
 	}
-	response := struct {
-		Token string `json:"token"`
-	}{
+	response := jwt.JWTTokenResponse{
 		Token: jwtToken,
 	}
 	c.JSON(http.StatusCreated, response)
@@ -101,7 +99,7 @@ func CreateNewUser(c *gin.Context, db *sql.DB) {
 // @Accept json
 // @Produce json
 // @Param user body user.RequestNewUser true "Request payload for sign in into an account"
-// @Success 201 {object} jwt.JWTUser
+// @Success 201 {object} jwt.JWTTokenResponse
 // @Failure 400 {object} user.UserError
 // @Router /auth/signin [post]
 func SignIn(c *gin.Context, db *sql.DB) {
@@ -135,9 +133,7 @@ func SignIn(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	response := struct {
-		Token string `json:"token"`
-	}{
+	response := jwt.JWTTokenResponse{
 		Token: jwtToken,
 	}
 	c.JSON(http.StatusOK, response)
@@ -149,7 +145,7 @@ func SignIn(c *gin.Context, db *sql.DB) {
 // @Accept json
 // @Produce json
 // @Param user body string true "UUID"
-// @Success 201 {object} user.UserFromDB
+// @Success 201 {object} user.ResponseUserData
 // @Failure 400 {object} user.UserError
 // @Failure 404 {object} user.UserError
 // @Failure 500 {object} user.UserError
@@ -174,10 +170,9 @@ func GetUserById(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	response := struct {
-		UserData UserFromDB `json:"userData"`
-	}{
-		UserData: userData,
+	response := ResponseUserData{
+		Username: userData.username,
+		UserID:   userData.userId,
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -189,7 +184,7 @@ func GetUserById(c *gin.Context, db *sql.DB) {
 // @Accept json
 // @Produce json
 // @Param user body string true "UUID"
-// @Success 201 {object} TODO: maybe put the types into some sorts of folder and have request response and app types
+// @Success 201 {object} user.ResponseUserGroups
 // @Failure 400 {object} user.UserError
 // @Failure 404 {object} user.UserError
 // @Failure 500 {object} user.UserError
@@ -214,10 +209,8 @@ func GetUserGroupsById(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	response := struct {
-		UserGroups []UserGroupsFromDB `json:"userGroups"`
-	}{
-		UserGroups: userGroups,
+	response := ResponseUserGroups{
+		Groups: userGroups,
 	}
 
 	c.JSON(http.StatusOK, response)

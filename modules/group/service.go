@@ -13,11 +13,11 @@ import (
 // @Tags groups
 // @Accept json
 // @Produce json
-// @Success 201 {object} group.NewGroup
+// @Success 201 {object} group.ResponseNewGroup
 // @Failure 400 {object} group.GroupError
 // @Failure 404 {object} group.GroupError
 // @Failure 500 {object} group.GroupError
-// @Router /groups [get]
+// @Router /groups [post]
 func CreateNewGroup(c *gin.Context, db *sql.DB) {
 	decodedJWT, err := auth.GetJWTPayloadFromHeader(c)
 
@@ -64,9 +64,7 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
 	}
-	response := struct {
-		GroupId string `json:"groupId"`
-	}{
+	response := ResponseNewGroup{
 		GroupId: newGroupId,
 	}
 	c.JSON(http.StatusCreated, response)
