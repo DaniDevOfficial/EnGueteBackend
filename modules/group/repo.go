@@ -2,7 +2,9 @@ package group
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"time"
 )
 
 func CreateNewGroupInDBWithTransaction(groupData RequestNewGroup, userId string, tx *sql.Tx) (string, error) {
@@ -20,13 +22,13 @@ func CreateNewGroupInDBWithTransaction(groupData RequestNewGroup, userId string,
 }
 
 func AddUserToGroupInDB(groupId string, userId string, db *sql.DB) error {
-	query := `INSERT INTO group_users (group_id, user_id) VALUES ($1, $2)`
+	query := `INSERT INTO users_group (group_id, user_id) VALUES ($1, $2)`
 	_, err := db.Exec(query, groupId, userId)
 	return err
 }
 
 func AddUserToGroupWithTransaction(groupId string, userId string, tx *sql.Tx) error {
-	query := `INSERT INTO group_users (group_id, user_id) VALUES ($1, $2)`
+	query := `INSERT INTO user_groups (group_id, user_id) VALUES ($1, $2)`
 	_, err := tx.Exec(query, groupId, userId)
 	return err
 }
@@ -36,7 +38,7 @@ func CheckIfUserIsAdminOrOwnerOfGroupInDB(groupId string, userId string, db *sql
 	SELECT 
 		1
 	FROM groups g
-	LEFT JOIN group_users gu ON gu.group_id = g.group_id
+	LEFT JOIN user_groups gu ON gu.group_id = g.group_id
 	WHERE gu.user_id = $1
 	AND g.created_by = $1
 	AND g.group_id = $2
@@ -45,13 +47,11 @@ func CheckIfUserIsAdminOrOwnerOfGroupInDB(groupId string, userId string, db *sql
 	row := db.QueryRow(query, userId, groupId)
 	var exists int
 	if err := row.Scan(&exists); err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("user is neither admin nor owner of the group")
 		}
 		return err
 	}
-
-	return nil
 
 	return nil
 }
@@ -64,9 +64,18 @@ func CreateNewInviteInDBWithTransaction(groupId string, userId string, tx *sql.T
 		    ($1, $2)
 		RETURNING invite_token`
 	var inviteToken string
-	err := tx.QueryRow(query, groupId, userId).Scan(&inviteToken)
+	currentTime := time.Now()
+
+	err := tx.QueryRow(query, groupId, currentTime).Scan(&inviteToken)
 	if err != nil {
 		return "", err
 	}
 	return inviteToken, nil
+}
+
+func ValidateInviteTokenInDB(inviteToken string, db *sql.DB) (string, error) {
+	query := `SELECT group_id FROM group_invites WHERE invite_token = $1 AND expires_at > NOW()`
+	var groupId string
+	err := db.QueryRow(query, inviteToken).Scan(&groupId)
+	return groupId, err
 }

@@ -2,6 +2,7 @@ package group
 
 import (
 	"database/sql"
+	"enguete/modules/user"
 	"enguete/util/auth"
 	"github.com/gin-gonic/gin"
 	"log"
@@ -13,6 +14,7 @@ import (
 // @Tags groups
 // @Accept json
 // @Produce json
+// @Param group body group.RequestNewGroup true "Request payload for a new group"
 // @Success 201 {object} group.ResponseNewGroup
 // @Failure 400 {object} group.GroupError
 // @Failure 404 {object} group.GroupError
@@ -28,6 +30,7 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
 		return
 	}
+
 	var newGroupData RequestNewGroup
 	if err := c.ShouldBindJSON(&newGroupData); err != nil {
 		log.Println(err)
@@ -143,9 +146,10 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 
 	token, err := CreateNewInviteInDBWithTransaction(inviteRequest.GroupId, decodedJWT.UserId, tx)
 	if err != nil {
+		log.Println(err)
 		_ = tx.Rollback()
 		errorMessage := GroupError{
-			Error: "Error Creating Invite",
+			Error: "Error Creating Invite1",
 		}
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
@@ -153,7 +157,7 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 	err = tx.Commit()
 	if err != nil {
 		errorMessage := GroupError{
-			Error: "Error Creating Invite",
+			Error: "Error Creating Invite2",
 		}
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
@@ -163,4 +167,60 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 		InviteLink: fullLink,
 	}
 	c.JSON(http.StatusCreated, inviteLinkResponse)
+}
+
+// JoinGroupWithInviteToken handles joining a group via an invite token.
+// @Summary Join a group using an invite token
+// @Description Allows a user to join a specified group by validating an invite token. The user must have a valid token and necessary permissions.
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Bearer token for authorization"
+// @Param inviteToken path string true "Invite token for joining the group"
+// @Success 200 {object} GroupSuccess "User successfully added to group"
+// @Failure 400 {object} GroupError "Bad request - error decoding request"
+// @Failure 401 {object} GroupError "Unauthorized - invalid invite token or lack of permissions"
+// @Failure 404 {object} GroupError "Not Found - user not found"
+// @Failure 500 {object} GroupError "Internal server error - error adding user to group"
+// @Router /groups/invite/join/:inviteToken [post]
+func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	if err != nil {
+		errorMessage := GroupError{
+			Error: "Invalid invite token",
+		}
+		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
+		return
+	}
+	inviteToken := c.Param("inviteToken")
+	groupId, err := ValidateInviteTokenInDB(inviteToken, db)
+	if err != nil {
+		errorMessage := GroupError{
+			Error: "Invalid invite token",
+		}
+		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
+		return
+	}
+
+	_, err = user.GetUserByIdFromDB(jwtPayload.UserId, db)
+	if err != nil {
+		errorMessage := GroupError{
+			Error: "User not found",
+		}
+		c.AbortWithStatusJSON(http.StatusNotFound, errorMessage)
+		return
+	}
+
+	err = AddUserToGroupInDB(groupId, jwtPayload.UserId, db)
+	if err != nil {
+		errorMessage := GroupError{
+			Error: "Error adding user to group",
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		return
+	}
+	response := GroupSuccess{
+		Message: "User added to group",
+	}
+	c.JSON(http.StatusOK, response)
 }

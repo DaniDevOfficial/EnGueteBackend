@@ -1,6 +1,7 @@
 # En Guete Backend
 
-This is the backend for the *En Guete* app, designed to allow users to manage meal groups, opt in or out of meals, and invite others to join meal groups.
+This is the backend for the *En Guete* app, designed to allow users to manage meal groups, opt in or out of meals, and
+invite others to join meal groups.
 
 ---
 
@@ -27,24 +28,24 @@ This is the backend for the *En Guete* app, designed to allow users to manage me
 
 ### User-Related Endpoints
 
-| **Use Case**                    | **Endpoint**                  | **Method**             | **Implemented** |
-|---------------------------------|-------------------------------|------------------------|-----------------|
-| Create/Manage Account           | `/users`                      | GET, PUT, DELETE       | done            |
-| Sign in                          | `/auth/signin`                | POST                   | done            |
-| Sign up                          | `/auth/signup`                | POST                   | done            |
-| View all groups                  | `/users/:user_id/groups`      | GET                    | -               |
-| Leave a group                    | `/groups/:group_id/leave`     | DELETE                 | -               |
+| **Use Case**          | **Endpoint**              | **Method**       | **Implemented** |
+|-----------------------|---------------------------|------------------|-----------------|
+| Create/Manage Account | `/users`                  | GET, PUT, DELETE | done            |
+| Sign in               | `/auth/signin`            | POST             | done            |
+| Sign up               | `/auth/signup`            | POST             | done            |
+| View all groups       | `/users/:user_id/groups`  | GET              | partially done  |
+| Leave a group         | `/groups/:group_id/leave` | DELETE           | -               |
 
 ### Group-Related Endpoints
 
-| **Use Case**                             | **Endpoint**                           | **Method**             | **Implemented** |
-|------------------------------------------|----------------------------------------|------------------------|-----------------|
-| Create a new group                       | `/groups`                              | POST                   | -               |
-| Invite a user to join a group (link)     | `/groups/:group_id/invite`             | GET                    | -               |
-| View all members of a group              | `/groups/:group_id/members`            | GET                    | -               |
-| Delete group (admin only)                | `/groups/:group_id`                    | DELETE                 | -               |
-| Create a meal plan (admin only)          | `/groups/:group_id/meals`              | POST                   | -               |
-| View meal preferences of group members   | `/groups/:group_id/meals/:meal_id`     | GET                    | -               |
+| **Use Case**                           | **Endpoint**                       | **Method** | **Implemented** |
+|----------------------------------------|------------------------------------|------------|-----------------|
+| Create a new group                     | `/groups`                          | POST       | done            |
+| Invite a user to join a group (link)   | `/groups/:group_id/invite`         | GET        | done            |
+| View all members of a group            | `/groups/:group_id/members`        | GET        | -               |
+| Delete group (admin only)              | `/groups/:group_id`                | DELETE     | -               |
+| Create a meal plan (admin only)        | `/groups/:group_id/meals`          | POST       | -               |
+| View meal preferences of group members | `/groups/:group_id/meals/:meal_id` | GET        | -               |
 
 ---
 
@@ -53,14 +54,14 @@ This is the backend for the *En Guete* app, designed to allow users to manage me
 ### User Model
 
 ```typescript
-import { UUID } from "some-uuid-library";
+import {UUID} from "some-uuid-library";
 
 type User = {
-  user_id: UUID;
-  name: string;
-  email: string;
-  password_hash: string;
-  created_at: Date;
+    user_id: UUID;
+    name: string;
+    email: string;
+    password_hash: string;
+    created_at: Date;
 };
 ```
 
@@ -68,10 +69,10 @@ type User = {
 
 ```typescript
 type Group = {
-  group_id: UUID;
-  group_name: string;
-  created_by: UUID; // References the User who created the group
-  created_at: Date;
+    group_id: UUID;
+    group_name: string;
+    created_by: UUID; // References the User who created the group
+    created_at: Date;
 };
 ```
 
@@ -79,10 +80,10 @@ type Group = {
 
 ```typescript
 type UserGroup = {
-  user_group_id: UUID;
-  user_id: UUID;      // References User
-  group_id: UUID;     // References Group
-  joined_at: Date;
+    user_group_id: UUID;
+    user_id: UUID;      // References User
+    group_id: UUID;     // References Group
+    joined_at: Date;
 };
 ```
 
@@ -90,12 +91,12 @@ type UserGroup = {
 
 ```typescript
 type Meal = {
-  meal_id: UUID;
-  group_id: UUID;     // References Group
-  meal_type: string;  // e.g., "Lunch", "Dinner"
-  date: Date;         // The date the meal is planned for
-  created_by: UUID;   // References the admin or creator
-  created_at: Date;
+    meal_id: UUID;
+    group_id: UUID;     // References Group
+    meal_type: string;  // e.g., "Lunch", "Dinner"
+    date: Date;         // The date the meal is planned for
+    created_by: UUID;   // References the admin or creator
+    created_at: Date;
 };
 ```
 
@@ -103,10 +104,10 @@ type Meal = {
 
 ```typescript
 type MealPreference = {
-  preference_id: UUID;
-  meal_id: UUID;      // References Meal
-  user_id: UUID;      // References User
-  preference: string; // e.g., "opt-in", "opt-out", or dietary preferences
+    preference_id: UUID;
+    meal_id: UUID;      // References Meal
+    user_id: UUID;      // References User
+    preference: string; // e.g., "opt-in", "opt-out", or dietary preferences
 };
 ```
 
@@ -121,7 +122,8 @@ type MealPreference = {
 2. **Invitation Process**:
     - The group admin can generate an invitation link unique to their group.
     - The link includes the `group_id`, which allows the backend to connect the invitee to the correct group.
-    - When an invitee follows the link, they can register or log in, after which they are added to the `User_Groups` table for that group.
+    - When an invitee follows the link, they can register or log in, after which they are added to the `User_Groups`
+      table for that group.
 
 3. **Group Membership**:
     - Users can view all the groups they are part of.
@@ -152,8 +154,14 @@ type MealPreference = {
   "meal_id": "323e4567-e89b-12d3-a456-426614174001",
   "date": "2024-11-01",
   "preferences": [
-    { "user_id": "123e4567-e89b-12d3-a456-426614174002", "preference": "opt-in" },
-    { "user_id": "223e4567-e89b-12d3-a456-426614174003", "preference": "opt-out" }
+    {
+      "user_id": "123e4567-e89b-12d3-a456-426614174002",
+      "preference": "opt-in"
+    },
+    {
+      "user_id": "223e4567-e89b-12d3-a456-426614174003",
+      "preference": "opt-out"
+    }
   ]
 }
 ```

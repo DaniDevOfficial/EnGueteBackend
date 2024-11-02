@@ -364,8 +364,15 @@ func UpdateUserPassword(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errorMessage)
 		return
 	}
-
-	err = UpdatePasswordInDb(updatePasswordData.NewPassword, jwtPayload.UserId, db)
+	hashedPassword, err := hashing.HashPassword(updatePasswordData.NewPassword)
+	if err != nil {
+		errorMessage := UserError{
+			Error: "Error hashing password",
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		return
+	}
+	err = UpdatePasswordInDb(hashedPassword, jwtPayload.UserId, db)
 	if err != nil {
 		return
 	}

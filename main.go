@@ -2,7 +2,11 @@ package main
 
 import (
 	_ "enguete/docs"
+	"enguete/modules/dev"
+	"enguete/modules/group"
+	"enguete/modules/user"
 	"enguete/util/auth"
+	"enguete/util/db"
 	"fmt"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -20,17 +24,16 @@ import (
 // @BasePath /
 // @schemes http
 func main() {
-	// dbConnection := db.InitDB()
+	dbConnection := db.InitDB()
 
 	router := gin.Default()
 	router.GET("/documentation/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	router.Use(corsMiddleware())
-	/*
-		user.RegisterUserRoute(router, dbConnection)
-		dev.RegisterDevRoutes(router, dbConnection)
-		group.RegisterGroupRoute(router, dbConnection)
-	*/
+	user.RegisterUserRoute(router, dbConnection)
+	dev.RegisterDevRoutes(router, dbConnection)
+	group.RegisterGroupRoute(router, dbConnection)
+
 	fmt.Println("🚀 Server is listening on http://localhost:8000/")
 	log.Fatal(router.Run("localhost:8000"))
 }
