@@ -37,10 +37,29 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errorMessage)
 		return
 	}
-	newGroupId, err := CreateNewGroupInDB(newGroupData, decodedJWT.UserId, db)
+	tx, err := db.Begin()
+	newGroupId, err := CreateNewGroupInDBWithTransaction(newGroupData, decodedJWT.UserId, tx)
 	if err != nil {
+		_ = tx.Rollback()
 		errorMessage := GroupError{
 			Error: "Error Creating Group",
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		return
+	}
+	err = AddUserToGroupWithTransaction(newGroupId, decodedJWT.UserId, tx)
+	if err != nil {
+		_ = tx.Rollback()
+		errorMessage := GroupError{
+			Error: "Error Adding User to Group",
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		return
+	}
+	err = tx.Commit()
+	if err != nil {
+		errorMessage := GroupError{
+			Error: "Error Adding User to Group",
 		}
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
