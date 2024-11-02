@@ -153,17 +153,17 @@ func SignIn(c *gin.Context, db *sql.DB) {
 // @Failure 400 {object} user.UserError
 // @Failure 404 {object} user.UserError
 // @Failure 500 {object} user.UserError
-// @Router /users/:uuid [get]
+// @Router /users/:id [get]
 func GetUserById(c *gin.Context, db *sql.DB) {
 
-	uuid := c.Param("uuid")
-	uuid = strings.Trim(uuid, " ")
-	if uuid == "" {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "No uuid attatched"})
+	userId := c.Param("id")
+	userId = strings.Trim(userId, " ")
+	if userId == "" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "No userId attatched"})
 		return
 	}
 
-	userData, err := GetUserByIdFromDB(uuid, db)
+	userData, err := GetUserByIdFromDB(userId, db)
 	if errors.Is(err, sql.ErrNoRows) {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
@@ -178,6 +178,46 @@ func GetUserById(c *gin.Context, db *sql.DB) {
 		UserData UserFromDB `json:"userData"`
 	}{
 		UserData: userData,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// GetUserGroupsById @Summary Get a users groups his in, by his id
+// @Description Get a users groups he's in by his id or return an error
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param user body string true "UUID"
+// @Success 201 {object} TODO: maybe put the types into some sorts of folder and have request response and app types
+// @Failure 400 {object} user.UserError
+// @Failure 404 {object} user.UserError
+// @Failure 500 {object} user.UserError
+// @Router /users/:id/groups [get]
+func GetUserGroupsById(c *gin.Context, db *sql.DB) {
+
+	userId := c.Param("id")
+	userId = strings.Trim(userId, " ")
+	if userId == "" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "No userId attatched"})
+		return
+	}
+
+	userGroups, err := GetUsersGroupByUserIdFromDB(userId, db)
+	if errors.Is(err, sql.ErrNoRows) {
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "shit hit the fan"})
+		return
+	}
+
+	response := struct {
+		UserGroups []UserGroupsFromDB `json:"userGroups"`
+	}{
+		UserGroups: userGroups,
 	}
 
 	c.JSON(http.StatusOK, response)

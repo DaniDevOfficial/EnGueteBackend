@@ -50,6 +50,46 @@ func GetUserByIdFromDB(userId string, db *sql.DB) (UserFromDB, error) {
 	return userData, err
 }
 
+func GetUsersGroupByUserIdFromDB(userId string, db *sql.DB) ([]UserGroupsFromDB, error) {
+
+	query := `SELECT
+    			g.group_id,
+    			g.group_name,
+    			COUNT(ug.user_id) as user_count
+    		FROM
+    		    groups g
+    		LEFT JOIN 
+			    user_groups ug ON g.group_id = ug.group_id
+			LEFT JOIN 
+    		        users u ON ug.user_id = u.user_id
+    		GROUP BY
+    			g.group_id
+    		WHERE 
+        		u.user_id = $1`
+	rows, err := db.Query(query, userId)
+	var userGroups []UserGroupsFromDB
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+
+		}
+	}(rows)
+	if err != nil {
+		return userGroups, err
+	}
+
+	for rows.Next() {
+		var thisUserGroup UserGroupsFromDB
+		err := rows.Scan(&thisUserGroup.groupId, &thisUserGroup.groupName, &thisUserGroup.userCount)
+		if err != nil {
+			return userGroups, err
+		}
+		userGroups = append(userGroups, thisUserGroup)
+	}
+
+	return userGroups, err
+}
+
 func CreateUserInDB(userData DBNewUser, db *sql.DB) (string, error) {
 	query := `	INSERT INTO users 
     				(username, email, password)
