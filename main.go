@@ -3,6 +3,7 @@ package main
 import (
 	_ "enguete/docs"
 	"enguete/modules/dev"
+	"enguete/modules/group"
 	"enguete/modules/user"
 	"enguete/util/auth"
 	"enguete/util/db"
@@ -31,6 +32,7 @@ func main() {
 
 	user.RegisterUserRoute(router, dbConnection)
 	dev.RegisterDevRoutes(router, dbConnection)
+	group.RegisterGroupRoute(router, dbConnection)
 	router.GET("/documentation/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	fmt.Println("🚀 Server is listening on http://localhost:8000/")
