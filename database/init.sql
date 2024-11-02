@@ -1,4 +1,5 @@
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE
+EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Users Table
 
@@ -20,6 +21,15 @@ CREATE TABLE groups
     created_at TIMESTAMPTZ      DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE group_invites
+(
+    invite_token UUID PRIMARY KEY gen_random_uuid(),
+    group_id     UUID REFERENCES groups (group_id),
+    expires_at   TIMESTAMPTZ,
+    created_at   TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+
 -- User_Groups Table (Many-to-Many Relationship between Users and Groups)
 CREATE TABLE user_groups
 (
@@ -35,10 +45,10 @@ CREATE TABLE meals
     meal_id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     group_id   UUID REFERENCES groups (group_id) ON DELETE CASCADE,
     meal_type  VARCHAR(50)  NOT NULL,          -- e.g., "Lunch" or "Dinner"
-    dateTime  TIMESTAMPTZ  NOT NULL,          -- Date and time of the meal
+    dateTime   TIMESTAMPTZ  NOT NULL,          -- Date and time of the meal
     title      VARCHAR(100) NOT NULL,          -- Title of the meal
     notes      TEXT,                           -- Additional notes for the meal
-    closed     BOOLEAN      DEFAULT FALSE,     -- Whether the meal is closed for sign-ups
+    closed     BOOLEAN          DEFAULT FALSE, -- Whether the meal is closed for sign-ups
     fulfilled  BOOLEAN          DEFAULT FALSE, -- Fulfillment status of the meal
     created_by UUID         REFERENCES users (user_id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ      DEFAULT CURRENT_TIMESTAMP
