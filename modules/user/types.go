@@ -42,3 +42,9 @@ type UserFromDB struct {
 	email        string
 	passwordHash string
 }
+
+type UserGroupsFromDB struct {
+	userCount int
+	groupName string
+	groupId   string
+}

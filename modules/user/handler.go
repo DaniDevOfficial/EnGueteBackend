@@ -14,6 +14,9 @@ func registerUserRoutes(router *gin.Engine, db *sql.DB) {
 	router.GET("/users/:id", func(c *gin.Context) {
 		GetUserById(c, db)
 	})
+	router.GET("/users/:id/groups", func(c *gin.Context) {
+		GetUserGroupsById(c, db)
+	})
 	router.DELETE("/users/", func(c *gin.Context) {
 		DeleteUserWithJWT(c, db)
 	})
