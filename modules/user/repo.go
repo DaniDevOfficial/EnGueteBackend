@@ -20,9 +20,9 @@ func GetUserByName(username string, db *sql.DB) (UserFromDB, error) {
 	query := `SELECT 
 				username,
 				email,
-				password,
-				id
-			FROM
+				password_hash,
+				user_id
+ 			FROM 
 				users
 			WHERE
 				username = $1`
@@ -42,7 +42,7 @@ func GetUserByIdFromDB(userId string, db *sql.DB) (UserFromDB, error) {
     		FROM
     		    users
     		WHERE 
-        		uuid = $1`
+        		user_id = $1`
 	row := db.QueryRow(query, userId)
 
 	var userData UserFromDB
@@ -92,7 +92,7 @@ func GetUsersGroupByUserIdFromDB(userId string, db *sql.DB) ([]UserGroupsFromDB,
 
 func CreateUserInDB(userData DBNewUser, db *sql.DB) (string, error) {
 	query := `	INSERT INTO users 
-    				(username, email, password)
+    				(username, email, password_hash)
 				VALUES
     				($1, $2, $3)
      			RETURNING user_id`
@@ -110,7 +110,7 @@ func CreateUserInDB(userData DBNewUser, db *sql.DB) (string, error) {
 func UpdateUsernameInDB(newUsername string, userId string, db *sql.DB) error {
 	query := `	UPDATE users
 					username = $1
-				WHERE id = $2
+				WHERE user_id = $2
 `
 	_, err := db.Exec(query, newUsername, userId)
 	return err
@@ -118,7 +118,7 @@ func UpdateUsernameInDB(newUsername string, userId string, db *sql.DB) error {
 
 func UpdatePasswordInDb(newPassword string, userId string, db *sql.DB) error {
 	query := `	UPDATE users
-					password = $1
+					password_hash = $1
 				WHERE user_id = $2
 `
 	_, err := db.Exec(query, newPassword, userId)

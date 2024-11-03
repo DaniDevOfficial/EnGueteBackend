@@ -10,3 +10,7 @@ type JWTPayload struct {
 	UserName string
 	Exp      int64
 }
+
+type JWTTokenResponse struct {
+	Token string `json:"token"`
+}

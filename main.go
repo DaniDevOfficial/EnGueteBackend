@@ -3,6 +3,7 @@ package main
 import (
 	_ "enguete/docs"
 	"enguete/modules/dev"
+	"enguete/modules/group"
 	"enguete/modules/user"
 	"enguete/util/auth"
 	"enguete/util/db"
@@ -26,12 +27,12 @@ func main() {
 	dbConnection := db.InitDB()
 
 	router := gin.Default()
+	router.GET("/documentation/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	router.Use(corsMiddleware())
-
 	user.RegisterUserRoute(router, dbConnection)
 	dev.RegisterDevRoutes(router, dbConnection)
-	router.GET("/documentation/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	group.RegisterGroupRoute(router, dbConnection)
 
 	fmt.Println("🚀 Server is listening on http://localhost:8000/")
 	log.Fatal(router.Run("localhost:8000"))

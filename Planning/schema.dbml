@@ -13,6 +13,13 @@ Table groups {
   created_at TIMESTAMPTZ [default: "CURRENT_TIMESTAMP"]
 }
 
+Table group_invites {
+  invite_token UUID [pk, default: "gen_random_uuid()"]
+  group_id UUID [not null]
+  expires_at TIMESTAMPTZ
+  created_at TIMESTAMPTZ [default: "CURRENT_TIMESTAMP"]
+}
+
 Table user_groups {
   user_group_id UUID [pk, default: "gen_random_uuid()"]
   user_id UUID
@@ -49,6 +56,7 @@ Table meal_cooks {
 
 // Relationships
 Ref: groups.created_by > users.user_id
+Ref: group_invites.group_id > groups.group_id
 Ref: user_groups.user_id > users.user_id
 Ref: user_groups.group_id > groups.group_id
 Ref: meals.group_id > groups.group_id
