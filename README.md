@@ -10,10 +10,10 @@ invite others to join meal groups.
 ### User
 
 1. [x] As a user, I want to create and manage my account.
-2. [ ] As a user, I want to create and join multiple groups.
-3. [ ] As a user, I want to invite other users to my groups via an invite link.
+2. [x] As a user, I want to create and join multiple groups.
+3. [x] As a user, I want to invite other users to my groups via an invite link.
 4. [ ] As a user, I want to view all my groups and see which users belong to each group.
-5. [ ] As a user, I want to leave any group I am a member of.
+5. [x] As a user, I want to leave any group I am a member of.
 
 ### Group Admin (Creator of a Group)
 
@@ -28,21 +28,21 @@ invite others to join meal groups.
 
 ### User-Related Endpoints
 
-| **Use Case**          | **Endpoint**              | **Method**       | **Implemented** |
-|-----------------------|---------------------------|------------------|-----------------|
-| Create/Manage Account | `/users`                  | GET, PUT, DELETE | done            |
-| Sign in               | `/auth/signin`            | POST             | done            |
-| Sign up               | `/auth/signup`            | POST             | done            |
-| View all groups       | `/users/:user_id/groups`  | GET              | partially done  |
-| Leave a group         | `/groups/:group_id/leave` | DELETE           | -               |
+| **Use Case**          | **Endpoint**             | **Method**       | **Implemented** |
+|-----------------------|--------------------------|------------------|-----------------|
+| Create/Manage Account | `/users`                 | GET, PUT, DELETE | done            |
+| Sign in               | `/auth/signin`           | POST             | done            |
+| Sign up               | `/auth/signup`           | POST             | done            |
+| View all groups       | `/users/:user_id/groups` | GET              | -               |
+| Leave a group         | `/groups/leave/:groupId` | DELETE           | done            |
 
 ### Group-Related Endpoints
 
 | **Use Case**                           | **Endpoint**                       | **Method** | **Implemented** |
 |----------------------------------------|------------------------------------|------------|-----------------|
 | Create a new group                     | `/groups`                          | POST       | done            |
-| Invite a user to join a group (link)   | `/groups/:group_id/invite`         | GET        | done            |
-| View all members of a group            | `/groups/:group_id/members`        | GET        | -               |
+| Invite a user to join a group (link)   | `/groups/invite/:groupId`          | GET        | done            |
+| View all members of a group            | `/groups/members/:group_id`        | GET        | -               |
 | Delete group (admin only)              | `/groups/:group_id`                | DELETE     | -               |
 | Create a meal plan (admin only)        | `/groups/:group_id/meals`          | POST       | -               |
 | View meal preferences of group members | `/groups/:group_id/meals/:meal_id` | GET        | -               |

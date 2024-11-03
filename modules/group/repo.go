@@ -110,3 +110,29 @@ func DeleteInviteTokenIfAllowedInDB(inviteToken string, userId string, db *sql.D
 	_, err := db.Exec(query, inviteToken, userId)
 	return err
 }
+
+var ErrNoMatchingGroupOrUser = errors.New("no matching group or user found for deletion")
+
+func LeaveGroupInDB(groupId string, userId string, db *sql.DB) error {
+	query := `
+		DELETE FROM user_groups
+		WHERE group_id = $1
+		AND user_id = $2
+	`
+
+	result, err := db.Exec(query, groupId, userId)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return ErrNoMatchingGroupOrUser
+	}
+
+	return nil
+}

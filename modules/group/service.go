@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"enguete/modules/user"
 	"enguete/util/auth"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
@@ -73,7 +74,7 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusCreated, response)
 }
 
-func GetGroupById(c *gin.Context, db *sql.DB) {
+func GetGroupById(c *gin.Context, db *sql.DB) { // TODO: this will be implemented later
 	decodedJWT, err := auth.GetJWTPayloadFromHeader(c)
 	if err != nil {
 		errorMessage := GroupError{
@@ -277,6 +278,51 @@ func DeleteInviteToken(c *gin.Context, db *sql.DB) {
 	}
 	response := GroupSuccess{
 		Message: "Invite token deleted",
+	}
+	c.JSON(http.StatusOK, response)
+}
+
+// LeaveGroup handles a user leaving a group.
+// @Summary Leave a group.
+// @Description Allows a user to leave a group. The user must have a valid token and necessary permissions.
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Bearer token for authorization"
+// @Param groupId path string true "Group ID for leaving the group"
+// @Success 200 {object} GroupSuccess "User successfully left the group"
+// @Failure 400 {object} GroupError "Bad request - error decoding request"
+// @Failure 401 {object} GroupError "Unauthorized - invalid group id or lack of permissions"
+// @Failure 500 {object} GroupError "Internal server error - error leaving group"
+// @Router /groups/leave/{groupId} [delete]
+func LeaveGroup(c *gin.Context, db *sql.DB) {
+	decodedJWT, err := auth.GetJWTPayloadFromHeader(c)
+	if err != nil {
+		errorMessage := GroupError{
+			Error: "Authorisation is not valid",
+		}
+		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
+		return
+	}
+	groupId := c.Param("groupId")
+	err = LeaveGroupInDB(groupId, decodedJWT.UserId, db)
+	if err != nil {
+		if errors.Is(err, ErrNoMatchingGroupOrUser) {
+			errorMessage := GroupError{
+				Error: "Cant leave a group your not in or that doesnt exist",
+			}
+			c.AbortWithStatusJSON(http.StatusBadRequest, errorMessage)
+			return
+		}
+
+		errorMessage := GroupError{
+			Error: "Error leaving group",
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		return
+	}
+	response := GroupSuccess{
+		Message: "User left group",
 	}
 	c.JSON(http.StatusOK, response)
 }
