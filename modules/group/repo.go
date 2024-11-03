@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -21,10 +22,22 @@ func CreateNewGroupInDBWithTransaction(groupData RequestNewGroup, userId string,
 	return groupId, nil
 }
 
-func AddUserToGroupInDB(groupId string, userId string, db *sql.DB) error {
-	query := `INSERT INTO users_group (group_id, user_id) VALUES ($1, $2)`
-	_, err := db.Exec(query, groupId, userId)
-	return err
+func AddUserToGroupInDB(groupId string, userId string, db *sql.DB) (bool, error) {
+	query := `
+		INSERT INTO user_groups (group_id, user_id)
+		VALUES ($1, $2)
+		ON CONFLICT (group_id, user_id) DO NOTHING
+		RETURNING true
+	`
+
+	var result bool
+	err := db.QueryRow(query, groupId, userId).Scan(&result)
+	log.Println(result)
+	log.Println(err)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return result, err
 }
 
 func AddUserToGroupWithTransaction(groupId string, userId string, tx *sql.Tx) error {
@@ -64,9 +77,9 @@ func CreateNewInviteInDBWithTransaction(groupId string, userId string, tx *sql.T
 		    ($1, $2)
 		RETURNING invite_token`
 	var inviteToken string
-	currentTime := time.Now()
+	expirationTime := time.Now().Add(24 * time.Hour)
 
-	err := tx.QueryRow(query, groupId, currentTime).Scan(&inviteToken)
+	err := tx.QueryRow(query, groupId, expirationTime).Scan(&inviteToken)
 	if err != nil {
 		return "", err
 	}
@@ -74,8 +87,17 @@ func CreateNewInviteInDBWithTransaction(groupId string, userId string, tx *sql.T
 }
 
 func ValidateInviteTokenInDB(inviteToken string, db *sql.DB) (string, error) {
-	query := `SELECT group_id FROM group_invites WHERE invite_token = $1 AND expires_at > NOW()`
+	query := `
+		WITH deleted AS (
+			DELETE FROM group_invites
+			WHERE invite_token = $1 AND expires_at <= NOW()
+		)
+		SELECT group_id FROM group_invites
+		WHERE invite_token = $1
+	`
+
 	var groupId string
 	err := db.QueryRow(query, inviteToken).Scan(&groupId)
+
 	return groupId, err
 }

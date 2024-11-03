@@ -16,7 +16,7 @@ func registerGroupRoutes(router *gin.Engine, db *sql.DB) {
 	router.POST("/groups/invite/", func(c *gin.Context) {
 		GenerateInviteLink(c, db)
 	})
-	router.GET("/groups/invite/join/:inviteToken", func(c *gin.Context) {
+	router.POST("/groups/invite/join/:inviteToken", func(c *gin.Context) {
 		JoinGroupWithInviteToken(c, db)
 	})
 	router.GET("/groups/:id", func(c *gin.Context) {

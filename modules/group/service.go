@@ -187,14 +187,16 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
 	if err != nil {
 		errorMessage := GroupError{
-			Error: "Invalid invite token",
+			Error: "Invalid jwt token",
 		}
 		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
 		return
 	}
 	inviteToken := c.Param("inviteToken")
+	log.Println(inviteToken)
 	groupId, err := ValidateInviteTokenInDB(inviteToken, db)
 	if err != nil {
+		log.Println(err)
 		errorMessage := GroupError{
 			Error: "Invalid invite token",
 		}
@@ -204,6 +206,7 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 
 	_, err = user.GetUserByIdFromDB(jwtPayload.UserId, db)
 	if err != nil {
+		log.Println(err)
 		errorMessage := GroupError{
 			Error: "User not found",
 		}
@@ -211,7 +214,14 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = AddUserToGroupInDB(groupId, jwtPayload.UserId, db)
+	result, err := AddUserToGroupInDB(groupId, jwtPayload.UserId, db)
+	if !result {
+		errorMessage := GroupError{
+			Error: "User already in group",
+		}
+		c.AbortWithStatusJSON(http.StatusBadRequest, errorMessage)
+		return
+	}
 	if err != nil {
 		errorMessage := GroupError{
 			Error: "Error adding user to group",

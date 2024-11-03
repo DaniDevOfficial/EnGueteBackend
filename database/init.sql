@@ -34,7 +34,11 @@ CREATE TABLE user_groups
     user_group_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id       UUID NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
     group_id      UUID NOT NULL REFERENCES groups (group_id) ON DELETE CASCADE,
-    joined_at     TIMESTAMPTZ      DEFAULT CURRENT_TIMESTAMP
+    joined_at     TIMESTAMPTZ      DEFAULT CURRENT_TIMESTAMP,
+
+    -- Unique constraint to prevent duplicate user_id, group_id pairs
+    CONSTRAINT unique_user_group UNIQUE (user_id, group_id)
+
 );
 
 -- Meals Table

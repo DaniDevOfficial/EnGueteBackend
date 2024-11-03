@@ -42,7 +42,7 @@ func GetUserByIdFromDB(userId string, db *sql.DB) (UserFromDB, error) {
     		FROM
     		    users
     		WHERE 
-        		uuid = $1`
+        		user_id = $1`
 	row := db.QueryRow(query, userId)
 
 	var userData UserFromDB
