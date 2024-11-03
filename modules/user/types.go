@@ -9,20 +9,20 @@ type UserSuccess struct {
 }
 
 type RequestNewUser struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Username string `json:"username" binding:"required"`
+	Email    string `json:"email" binding:"required"`
+	Password string `json:"password" binding:"required"`
 }
 type RequestChangeUsername struct {
-	Username string `json:"username"`
+	Username string `json:"username" binding:"required"`
 }
 type RequestChangePassword struct {
-	OldPassword string `json:"oldPassword"`
-	NewPassword string `json:"newPassword"`
+	OldPassword string `json:"oldPassword" binding:"required"`
+	NewPassword string `json:"newPassword" binding:"required"`
 }
 
 type ResponseUserGroups struct {
-	Groups []UserGroupsFromDB `json:"userGroups"`
+	Groups []UserGroupsFromDB `json:"userGroups" `
 }
 
 type ResponseUserData struct {
@@ -47,10 +47,10 @@ type SignInCredentials struct {
 }
 
 type UserFromDB struct {
-	userId       string `json:"userId"`
-	username     string `json:"username"`
-	email        string `json:"email"`
-	passwordHash string `json:"passwordHash"`
+	UserId       string `json:"userId"`
+	Username     string `json:"username"`
+	Email        string `json:"email"`
+	PasswordHash string `json:"passwordHash"`
 }
 
 type UserGroupsFromDB struct {

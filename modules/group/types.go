@@ -9,11 +9,11 @@ type GroupSuccess struct {
 }
 
 type RequestNewGroup struct {
-	GroupName string `json:"groupName"`
+	GroupName string `json:"groupName" binding:"required"`
 }
 
 type InviteLinkGenerationRequest struct {
-	GroupId            string `json:"groupId"`
+	GroupId            string `json:"groupId" binding:"required"`
 	ExpirationDateTime string `json:"expirationDateTime"`
 }
 
