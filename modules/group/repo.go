@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 )
 
@@ -32,8 +31,6 @@ func AddUserToGroupInDB(groupId string, userId string, db *sql.DB) (bool, error)
 
 	var result bool
 	err := db.QueryRow(query, groupId, userId).Scan(&result)
-	log.Println(result)
-	log.Println(err)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
@@ -69,7 +66,7 @@ func CheckIfUserIsAdminOrOwnerOfGroupInDB(groupId string, userId string, db *sql
 	return nil
 }
 
-func CreateNewInviteInDBWithTransaction(groupId string, userId string, tx *sql.Tx) (string, error) {
+func CreateNewInviteInDBWithTransaction(groupId string, tx *sql.Tx) (string, error) {
 	query := `
 		INSERT INTO group_invites 
 		    (group_id, expires_at)
@@ -100,4 +97,16 @@ func ValidateInviteTokenInDB(inviteToken string, db *sql.DB) (string, error) {
 	err := db.QueryRow(query, inviteToken).Scan(&groupId)
 
 	return groupId, err
+}
+
+func DeleteInviteTokenIfAllowedInDB(inviteToken string, userId string, db *sql.DB) error {
+	query := `
+	DELETE FROM group_invites gi
+	USING groups
+	WHERE gi.invite_token = $1
+	AND groups.group_id = gi.group_id 
+	AND groups.created_by = $2
+`
+	_, err := db.Exec(query, inviteToken, userId)
+	return err
 }

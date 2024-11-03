@@ -128,6 +128,7 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
 			return
 		}
+		log.Println(err)
 		errorMessage := GroupError{
 			Error: "Error while checkin authentication",
 		}
@@ -144,7 +145,7 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	token, err := CreateNewInviteInDBWithTransaction(inviteRequest.GroupId, decodedJWT.UserId, tx)
+	token, err := CreateNewInviteInDBWithTransaction(inviteRequest.GroupId, tx)
 	if err != nil {
 		log.Println(err)
 		_ = tx.Rollback()
@@ -231,6 +232,51 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 	}
 	response := GroupSuccess{
 		Message: "User added to group",
+	}
+	c.JSON(http.StatusOK, response)
+}
+
+// DeleteInviteToken handles deleting an invite token.
+// @Summary Delete an invite token.
+// @Description Allows a user to delete an invite token. The user must have a valid token and necessary permissions.
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Bearer token for authorization"
+// @Param inviteToken path string true "Invite token for deleting it"
+// @Success 200 {object} GroupSuccess "Successfully deleted the token"
+// @Failure 400 {object} GroupError "Bad request - error decoding request"
+// @Failure 401 {object} GroupError "Unauthorized - invalid invite token or lack of permissions"
+// @Failure 500 {object} GroupError "Internal server error - error deleting invite token"
+// @Router /groups/invite/join/:inviteToken [post]
+func DeleteInviteToken(c *gin.Context, db *sql.DB) {
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	if err != nil {
+		errorMessage := GroupError{
+			Error: "Invalid jwt token",
+		}
+		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
+		return
+	}
+	inviteToken := c.Param("inviteToken")
+	groupId, err := ValidateInviteTokenInDB(inviteToken, db)
+	if err != nil {
+		errorMessage := GroupError{
+			Error: "Error validating invite token",
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		return
+	}
+	err = DeleteInviteTokenIfAllowedInDB(groupId, jwtPayload.UserId, db)
+	if err != nil {
+		errorMessage := GroupError{
+			Error: "Error deleting invite token",
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		return
+	}
+	response := GroupSuccess{
+		Message: "Invite token deleted",
 	}
 	c.JSON(http.StatusOK, response)
 }
