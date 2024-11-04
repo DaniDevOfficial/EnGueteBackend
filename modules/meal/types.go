@@ -15,3 +15,12 @@ type RequestNewMeal struct {
 	Notes       string `json:"notes" `
 	GroupId     string `json:"groupId" binding:"required"`
 }
+
+type RequestAddCookToMeal struct {
+	UserId string `json:"userId" binding:"required"`
+	MealId string `json:"mealId" binding:"required"`
+}
+
+type ResponseNewMeal struct {
+	MealId string `json:"mealId"`
+}

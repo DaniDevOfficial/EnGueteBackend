@@ -66,6 +66,35 @@ func CheckIfUserIsAdminOrOwnerOfGroupInDB(groupId string, userId string, db *sql
 	return nil
 }
 
+func GetUserRolesInGroup(groupId string, userId string, db *sql.DB) ([]string, error) {
+	query := `
+	SELECT role
+	FROM user_roles_group
+	WHERE user_id = $1
+	AND group_id = $2
+`
+	rows, err := db.Query(query, userId, groupId)
+	var userRoles []string
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+
+		}
+	}(rows)
+	if err != nil {
+		return userRoles, err
+	}
+	for rows.Next() {
+		var userRole string
+		err := rows.Scan(&userRole)
+		if err != nil {
+			return userRoles, err
+		}
+		userRoles = append(userRoles, userRole)
+	}
+	return userRoles, nil
+}
+
 func CreateNewInviteInDBWithTransaction(groupId string, tx *sql.Tx) (string, error) {
 	query := `
 		INSERT INTO group_invites 
