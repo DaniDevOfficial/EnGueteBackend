@@ -4,9 +4,11 @@ import (
 	_ "enguete/docs"
 	"enguete/modules/dev"
 	"enguete/modules/group"
+	"enguete/modules/meal"
 	"enguete/modules/user"
 	"enguete/util/auth"
 	"enguete/util/db"
+	"enguete/util/validator"
 	"fmt"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -25,7 +27,7 @@ import (
 // @schemes http
 func main() {
 	dbConnection := db.InitDB()
-
+	validator.InitCustomValidators()
 	router := gin.Default()
 	router.GET("/documentation/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
@@ -33,7 +35,7 @@ func main() {
 	user.RegisterUserRoute(router, dbConnection)
 	dev.RegisterDevRoutes(router, dbConnection)
 	group.RegisterGroupRoute(router, dbConnection)
-
+	meal.RegisterMealRoute(router, dbConnection)
 	fmt.Println("🚀 Server is listening on http://localhost:8000/")
 	log.Fatal(router.Run("localhost:8000"))
 }

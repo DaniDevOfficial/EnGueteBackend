@@ -14,6 +14,6 @@ func registerMealRoutes(router *gin.Engine, db *sql.DB) {
 		// GetMealById(c, db)
 	})
 	router.POST("/meals/", func(c *gin.Context) {
-		// CreateNewMeal(c, db)
+		CreateNewMeal(c, db)
 	})
 }

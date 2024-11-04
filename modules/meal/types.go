@@ -9,9 +9,9 @@ type MealSuccess struct {
 }
 
 type RequestNewMeal struct {
-	Title       string `json:"title"`
-	Type        string `json:"type"`
-	ScheduledAt string `json:"scheduledAt"`
-	Notes       string `json:"notes"`
-	GroupId     string `json:"groupId"`
+	Title       string `json:"title" binding:"required"`
+	Type        string `json:"type" binding:"required"`
+	ScheduledAt string `json:"scheduledAt" binding:"required,validDateTime"`
+	Notes       string `json:"notes" `
+	GroupId     string `json:"groupId" binding:"required"`
 }
