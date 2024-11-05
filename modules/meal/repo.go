@@ -14,3 +14,12 @@ func CreateNewMealInDB(newMeal RequestNewMeal, userId string, db *sql.DB) (strin
 	err := row.Scan(&mealId)
 	return mealId, err
 }
+
+func AddCookToMealInDB(userId string, groupId string, db *sql.DB) error {
+	query := `INSERT INTO meal_cooks
+    				(user_id, meal_id)
+    				VALUES
+    				($1, $2)`
+	_, err := db.Exec(query, userId, groupId)
+	return err
+}
