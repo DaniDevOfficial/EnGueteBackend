@@ -16,6 +16,32 @@ type RequestNewMeal struct {
 	GroupId     string `json:"groupId" binding:"required"`
 }
 
+type RequestUpdateMeal struct {
+	Title       string `json:"title" binding:"required"`
+	Type        string `json:"type" binding:"required"`
+	ScheduledAt string `json:"scheduledAt" binding:"required,validDateTime"`
+	Notes       string `json:"notes"`
+}
+
+type RequestUpdateTitle struct {
+	NewTitle string `json:"newTitle" binding:"required"`
+	MealId   string `json:"mealId" binding:"required"`
+}
+
+type RequestUpdateType struct {
+	NewType string `json:"newType" binding:"required"`
+	MealId  string `json:"mealId" binding:"required"`
+}
+
+type RequestUpdateNotes struct {
+	NewNotes string `json:"newNotes" binding:"required"`
+	MealId   string `json:"mealId" binding:"required"`
+}
+type RequestUpdateScheduledAt struct {
+	NewScheduledAt string `json:"newScheduledAt" binding:"required,validDateTime"`
+	MealId         string `json:"mealId" binding:"required"`
+}
+
 type RequestAddCookToMeal struct {
 	UserId  string `json:"userId" binding:"required"`
 	GroupId string `json:"groupId" binding:"required"`

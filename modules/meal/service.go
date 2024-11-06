@@ -118,3 +118,25 @@ func RemoveCookFromMeal(c *gin.Context, db *sql.DB) {
 	//TODO: Send an updated list of users in the meal
 	c.JSON(http.StatusOK, MealSuccess{Message: "Cook removed from meal"})
 }
+
+func UpdateMealTitle(c *gin.Context, db *sql.DB) {
+	var newTitle RequestUpdateTitle
+
+	if err := c.ShouldBindJSON(&newTitle); err != nil {
+		c.JSON(http.StatusBadRequest, MealError{Error: "Invalid request body"})
+		return
+	}
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		return
+	}
+
+	err = group.CheckIfUserIsAdminOrOwnerOfGroupInDB(newTitle.GroupId, jwtPayload.UserId, db)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		return
+	}
+
+}

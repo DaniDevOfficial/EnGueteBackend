@@ -19,7 +19,10 @@ func registerMealRoutes(router *gin.Engine, db *sql.DB) {
 	router.POST("/meals/cooks", func(context *gin.Context) {
 		AddCookToMeal(context, db)
 	})
-	router.DELETE("/meals/:id", func(c *gin.Context) {
+	router.DELETE("/meals/cooks", func(c *gin.Context) {
 		RemoveCookFromMeal(c, db)
+	})
+	router.PUT("/meals/:mealId", func(c *gin.Context) {
+		UpdateMeal(c, db)
 	})
 }
