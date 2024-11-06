@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"enguete/modules/group"
 	"enguete/util/auth"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
@@ -86,4 +87,34 @@ func AddCookToMeal(c *gin.Context, db *sql.DB) {
 	//TODO: Send notification to user who got added as a cook
 	//TODO: Send an updated list of users in the meal
 	c.JSON(http.StatusCreated, MealSuccess{Message: "Cook added to meal"})
+}
+
+func RemoveCookFromMeal(c *gin.Context, db *sql.DB) {
+	var removeCookFromMealData RequestRemoveCook
+	if err := c.ShouldBindJSON(&removeCookFromMealData); err != nil {
+		c.JSON(http.StatusBadRequest, MealError{Error: "Invalid request body"})
+		return
+	}
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		return
+	}
+	err = group.CheckIfUserIsAdminOrOwnerOfGroupInDB(removeCookFromMealData.GroupId, jwtPayload.UserId, db)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		return
+	}
+	err = RemoveCookFromMealInDB(removeCookFromMealData.UserId, removeCookFromMealData.GroupId, db)
+	if err != nil {
+		if errors.Is(err, ErrUserWasntACook) {
+			c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+	//TODO: Send notification to user who got added as a cook
+	//TODO: Send an updated list of users in the meal
+	c.JSON(http.StatusOK, MealSuccess{Message: "Cook removed from meal"})
 }
