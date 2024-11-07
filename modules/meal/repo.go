@@ -3,6 +3,7 @@ package meal
 import (
 	"database/sql"
 	"errors"
+	"github.com/lib/pq"
 )
 
 func CreateNewMealInDB(newMeal RequestNewMeal, userId string, db *sql.DB) (string, error) {
@@ -18,12 +19,40 @@ func CreateNewMealInDB(newMeal RequestNewMeal, userId string, db *sql.DB) (strin
 	return mealId, err
 }
 
+func DeleteMealInDB(mealId string, db *sql.DB) error {
+	query := `DELETE FROM meals WHERE id=$1`
+	_, err := db.Exec(query, mealId)
+	return err
+}
+
 func AddCookToMealInDB(userId string, groupId string, db *sql.DB) error {
 	query := `INSERT INTO meal_cooks
     				(user_id, meal_id)
     				VALUES
     				($1, $2)`
 	_, err := db.Exec(query, userId, groupId)
+	return err
+}
+
+var ErrUserAlreadyHasAPreferenceInSpecificMeal = errors.New("user already has A Preference")
+
+func OptInMealInDB(userId string, optData RequestOptInMeal, db *sql.DB) error {
+	query := `
+	INSERT INTO meal_preferences
+	(meal_id, user_id, preference)
+	VALUES 
+	    ($1, $2, $3)`
+
+	_, err := db.Exec(query, optData.MealId, userId, optData.Preference)
+	if err != nil {
+		// Check for unique constraint violation using pq's error code
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			return ErrUserAlreadyHasAPreferenceInSpecificMeal
+		}
+		// Return other errors as is
+		return err
+	}
 	return err
 }
 

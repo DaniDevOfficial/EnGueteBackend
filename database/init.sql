@@ -1,4 +1,5 @@
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE
+EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Users Table
 CREATE TABLE users
@@ -65,6 +66,9 @@ CREATE TABLE meal_preferences
     preference    VARCHAR(20) NOT NULL CHECK (preference IN ('opt-in', 'opt-out', 'undecided', 'eat later')),
     changed_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+
+    CONSTRAINT unique_meal_preference UNIQUE (meal_id, user_id)
 );
 
 -- Meal_Cooks Table (Many-to-Many Relationship between Meals and Users)
@@ -73,4 +77,6 @@ CREATE TABLE meal_cooks
     meal_cook_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     meal_id      UUID NOT NULL REFERENCES meals (meal_id) ON DELETE CASCADE,
     user_id      UUID NOT NULL REFERENCES users (user_id) ON DELETE CASCADE
+
+    CONSTRAINT unique_meal_cook UNIQUE (meal_id, user_id)
 );

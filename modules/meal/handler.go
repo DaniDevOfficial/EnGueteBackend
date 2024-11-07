@@ -16,12 +16,24 @@ func registerMealRoutes(router *gin.Engine, db *sql.DB) {
 	router.POST("/meals/", func(c *gin.Context) {
 		CreateNewMeal(c, db)
 	})
+	router.DELETE("/meals/:mealId", func(c *gin.Context) {
+		DeleteMeal(c, db)
+	})
 	router.POST("/meals/cooks", func(context *gin.Context) {
 		AddCookToMeal(context, db)
 	})
 	router.DELETE("/meals/cooks", func(c *gin.Context) {
 		RemoveCookFromMeal(c, db)
 	})
+
+	router.POST("/meals/optin", func(c *gin.Context) {
+		OptInMeal(c, db)
+	})
+
+	router.PUT("/meals/optin", func(c *gin.Context) {
+		OptInMeal(c, db)
+	})
+
 	router.PUT("/meals/title", func(c *gin.Context) {
 		UpdateMealTitle(c, db)
 	})
