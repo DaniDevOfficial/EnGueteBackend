@@ -22,7 +22,7 @@ func registerMealRoutes(router *gin.Engine, db *sql.DB) {
 	router.DELETE("/meals/cooks", func(c *gin.Context) {
 		RemoveCookFromMeal(c, db)
 	})
-	router.PUT("/meals/:mealId", func(c *gin.Context) {
-		UpdateMeal(c, db)
+	router.PUT("/meals/title", func(c *gin.Context) {
+		UpdateMealTitle(c, db)
 	})
 }

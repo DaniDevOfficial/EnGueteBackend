@@ -42,3 +42,19 @@ func RemoveCookFromMealInDB(userId string, groupId string, db *sql.DB) error {
 	}
 	return err
 }
+
+func UpdateMealTitleIdDB(mealId string, newTitle string, db *sql.DB) error {
+	query := `
+	UPDATE meals
+	SET title = $1
+	WHERE meal_id = $2
+	RETURNING meal_id
+`
+	var updatedMealId string
+	err := db.QueryRow(query, newTitle, mealId).Scan(&updatedMealId)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrUserWasntACook
+	}
+	//TODO: maybe implement a second query, which selects all the required data again from the db for real time data
+	return err
+}

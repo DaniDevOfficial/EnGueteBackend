@@ -89,6 +89,17 @@ func AddCookToMeal(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusCreated, MealSuccess{Message: "Cook added to meal"})
 }
 
+// RemoveCookFromMeal @Summary Remove a cook from a meal
+// @Description Remove a specific user from the list of cooks in a meal. Requires the user to be an admin or owner of the group.
+// @Tags meals
+// @Accept json
+// @Produce json
+// @Param removeCookFromMealData body RequestRemoveCook true "Payload to remove a cook from a meal"
+// @Success 200 {object} MealSuccess "Cook successfully removed from meal"
+// @Failure 400 {object} MealError "Invalid request body"
+// @Failure 401 {object} MealError "Unauthorized user or insufficient permissions"
+// @Failure 500 {object} MealError "Internal server error"
+// @Router /meals/remove-cook [post]
 func RemoveCookFromMeal(c *gin.Context, db *sql.DB) {
 	var removeCookFromMealData RequestRemoveCook
 	if err := c.ShouldBindJSON(&removeCookFromMealData); err != nil {
@@ -108,17 +119,28 @@ func RemoveCookFromMeal(c *gin.Context, db *sql.DB) {
 	err = RemoveCookFromMealInDB(removeCookFromMealData.UserId, removeCookFromMealData.GroupId, db)
 	if err != nil {
 		if errors.Is(err, ErrUserWasntACook) {
-			c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+			c.JSON(http.StatusUnauthorized, MealError{Error: "User was not a cook"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
 	}
-	//TODO: Send notification to user who got added as a cook
-	//TODO: Send an updated list of users in the meal
+	// TODO: Send notification to user who was removed as a cook
+	// TODO: Send an updated list of users in the meal
 	c.JSON(http.StatusOK, MealSuccess{Message: "Cook removed from meal"})
 }
 
+// UpdateMealTitle @Summary Updated a meals Title
+// @Description Update the Title on a specific meal within a group. Requires the user to be an admin or owner of the group.
+// @Tags meals
+// @Accept json
+// @Produce json
+// @Param newTitle body RequestUpdateTitle true "Payload to add a cook to a meal"
+// @Success 201 {object} MealSuccess "Meal successfully updated"
+// @Failure 400 {object} MealError "Invalid request body"
+// @Failure 401 {object} MealError "Unauthorized user or insufficient permissions"
+// @Failure 500 {object} MealError "Internal server error"
+// @Router /meals/ [post]
 func UpdateMealTitle(c *gin.Context, db *sql.DB) {
 	var newTitle RequestUpdateTitle
 
@@ -133,10 +155,18 @@ func UpdateMealTitle(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = group.CheckIfUserIsAdminOrOwnerOfGroupInDB(newTitle.GroupId, jwtPayload.UserId, db)
+	err = group.CheckIfUserIsAdminOrOwnerOfGroupViaMealIdInDB(newTitle.MealId, jwtPayload.UserId, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
 	}
 
+	err = UpdateMealTitleIdDB(newTitle.MealId, newTitle.NewTitle, db)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+	//TODO: Send an updated meal information to the frontend
+	c.JSON(http.StatusOK, MealSuccess{Message: "Meal updated successfully"})
 }
