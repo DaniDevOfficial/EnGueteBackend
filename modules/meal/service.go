@@ -170,3 +170,127 @@ func UpdateMealTitle(c *gin.Context, db *sql.DB) {
 	//TODO: Send an updated meal information to the frontend
 	c.JSON(http.StatusOK, MealSuccess{Message: "Meal updated successfully"})
 }
+
+// UpdateMealType @Summary Updated a meals Type
+// @Description Update the Type on a specific meal within a group. Requires the user to be an admin or owner of the group.
+// @Tags meals
+// @Accept json
+// @Produce json
+// @Param newTitle body RequestUpdateTitle true "Payload to add a cook to a meal"
+// @Success 201 {object} MealSuccess "Meal successfully updated"
+// @Failure 400 {object} MealError "Invalid request body"
+// @Failure 401 {object} MealError "Unauthorized user or insufficient permissions"
+// @Failure 500 {object} MealError "Internal server error"
+// @Router /meals/type [post]
+func UpdateMealType(c *gin.Context, db *sql.DB) {
+	var newType RequestUpdateType
+
+	if err := c.ShouldBindJSON(&newType); err != nil {
+		c.JSON(http.StatusBadRequest, MealError{Error: "Invalid request body"})
+		return
+	}
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		return
+	}
+
+	err = group.CheckIfUserIsAdminOrOwnerOfGroupViaMealIdInDB(newType.MealId, jwtPayload.UserId, db)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		return
+	}
+
+	err = UpdateMealTypeInDB(newType.MealId, newType.NewType, db)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+	//TODO: Send an updated meal information to the frontend
+	c.JSON(http.StatusOK, MealSuccess{Message: "Meal updated successfully"})
+}
+
+// UpdateMealNotes @Summary Updated a meals Notes
+// @Description Update the Notes on a specific meal within a group. Requires the user to be an admin or owner of the group.
+// @Tags meals
+// @Accept json
+// @Produce json
+// @Param newTitle body RequestUpdateNotes true "Payload to add a cook to a meal"
+// @Success 201 {object} MealSuccess "Meal successfully updated"
+// @Failure 400 {object} MealError "Invalid request body"
+// @Failure 401 {object} MealError "Unauthorized user or insufficient permissions"
+// @Failure 500 {object} MealError "Internal server error"
+// @Router /meals/notes [put]
+func UpdateMealNotes(c *gin.Context, db *sql.DB) {
+	var newNotes RequestUpdateNotes
+
+	if err := c.ShouldBindJSON(&newNotes); err != nil {
+		c.JSON(http.StatusBadRequest, MealError{Error: "Invalid request body"})
+		return
+	}
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		return
+	}
+
+	err = group.CheckIfUserIsAdminOrOwnerOfGroupViaMealIdInDB(newNotes.MealId, jwtPayload.UserId, db)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		return
+	}
+
+	err = UpdateMealNotesInDB(newNotes.MealId, newNotes.NewNotes, db)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+	//TODO: Send an updated meal information to the frontend
+	c.JSON(http.StatusOK, MealSuccess{Message: "Meal updated successfully"})
+}
+
+// UpdateMealScheduledAt @Summary Updated a meals happening date
+// @Description Update the dateTime when a meal will take place on a specific meal within a group. Requires the user to be an admin or owner of the group.
+// @Tags meals
+// @Accept json
+// @Produce json
+// @Param newTitle body RequestUpdateScheduledAt true "Payload to add a cook to a meal"
+// @Success 201 {object} MealSuccess "Meal successfully updated"
+// @Failure 400 {object} MealError "Invalid request body"
+// @Failure 401 {object} MealError "Unauthorized user or insufficient permissions"
+// @Failure 500 {object} MealError "Internal server error"
+// @Router /meals/scheduledAt [put]
+func UpdateMealScheduledAt(c *gin.Context, db *sql.DB) {
+	var newScheduledAt RequestUpdateScheduledAt
+
+	if err := c.ShouldBindJSON(&newScheduledAt); err != nil {
+		c.JSON(http.StatusBadRequest, MealError{Error: "Invalid request body"})
+		return
+	}
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		return
+	}
+
+	err = group.CheckIfUserIsAdminOrOwnerOfGroupViaMealIdInDB(newScheduledAt.MealId, jwtPayload.UserId, db)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		return
+	}
+
+	err = UpdateMealScheduledAtInDB(newScheduledAt.MealId, newScheduledAt.NewScheduledAt, db)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+	//TODO: Send an updated meal information to the frontend
+	//TODO: Send a push notification to all not opt out or undecided users
+	c.JSON(http.StatusOK, MealSuccess{Message: "Meal updated successfully"})
+}

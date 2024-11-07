@@ -25,4 +25,13 @@ func registerMealRoutes(router *gin.Engine, db *sql.DB) {
 	router.PUT("/meals/title", func(c *gin.Context) {
 		UpdateMealTitle(c, db)
 	})
+	router.PUT("/meals/type", func(c *gin.Context) {
+		UpdateMealType(c, db)
+	})
+	router.PUT("/meals/note", func(c *gin.Context) {
+		UpdateMealNotes(c, db)
+	})
+	router.PUT("/meals/scheduledAt", func(c *gin.Context) {
+		UpdateMealScheduledAt(c, db)
+	})
 }
