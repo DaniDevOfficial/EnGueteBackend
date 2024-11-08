@@ -167,7 +167,7 @@ func ValidateInviteTokenInDB(inviteToken string, db *sql.DB) (string, error) {
 	return groupId, err
 }
 
-func DeleteInviteTokenIfAllowedInDB(inviteToken string, userId string, db *sql.DB) error {
+func VoidInviteTokenIfAllowedInDB(inviteToken string, userId string, db *sql.DB) error {
 	query := `
 	DELETE FROM group_invites gi
 	USING groups

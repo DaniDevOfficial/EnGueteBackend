@@ -27,7 +27,7 @@ func registerInviteTokenRoutes(router *gin.Engine, db *sql.DB) {
 		GenerateInviteLink(c, db)
 	})
 	router.DELETE("/groups/invite/:inviteToken", func(c *gin.Context) {
-		DeleteInviteToken(c, db)
+		VoidInviteToken(c, db)
 	})
 	router.POST("/groups/invite/join/:inviteToken", func(c *gin.Context) {
 		JoinGroupWithInviteToken(c, db)

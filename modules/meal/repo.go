@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/lib/pq"
+	"time"
 )
 
 func CreateNewMealInDB(newMeal RequestNewMeal, userId string, db *sql.DB) (string, error) {
@@ -54,6 +55,31 @@ func OptInMealInDB(userId string, optData RequestOptInMeal, db *sql.DB) error {
 		return err
 	}
 	return err
+}
+
+func ChangeOptInStatusMealInDB(userId string, optData RequestOptInMeal, db *sql.DB) error {
+	query := `
+		UPDATE meal_preferences
+		SET preference = $1, changed_at = $2
+		WHERE meal_id = $3
+		AND user_id = $4
+		RETURNING meal_id`
+
+	var updatedMealID string
+	err := db.QueryRow(query, optData.Preference, time.Now(), optData.MealId, userId).Scan(&updatedMealID)
+
+	if err != nil {
+		// Check for unique constraint violation using pq's error code
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			return ErrUserAlreadyHasAPreferenceInSpecificMeal
+		}
+		// Return other errors as is
+		return err
+	}
+
+	// If we reach this point, the update was successful
+	return nil
 }
 
 var ErrUserWasntACook = errors.New("user wasn't a Cook")

@@ -135,6 +135,52 @@ func OptInMeal(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, MealSuccess{Message: "Meal Successfully OptIn"}) // TODO: later return entire meal preferences for this meal, to have valid frontend.
 }
 
+// ChangeOptInMeal @Summary Change Opt-in in a meal
+// @Description Allows a user to change opt-in status to a specific meal within a group. The requesting user must be a member of the group associated with the meal.
+// @Tags meals
+// @Accept json
+// @Produce json
+// @Param requestOptInMeal body RequestOptInMeal true "Payload to chnage opt-in status in a meal"
+// @Success 200 {object} MealSuccess "User successfully opted in to the meal"
+// @Failure 400 {object} MealError "Invalid request body or user already has a preference set for this meal"
+// @Failure 401 {object} MealError "Unauthorized user or insufficient permissions"
+// @Failure 500 {object} MealError "Internal server error"
+// @Router /meals/optin [put]
+func ChangeOptInMeal(c *gin.Context, db *sql.DB) {
+	var requestOptInMeal RequestOptInMeal
+
+	if err := c.ShouldBindJSON(&requestOptInMeal); err != nil {
+		c.JSON(http.StatusBadRequest, MealError{Error: "Invalid request body"})
+		return
+	}
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		return
+	}
+	_, err = group.IsUserMemberOfGroupViaMealId(requestOptInMeal.MealId, jwtPayload.UserId, db)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+
+	err = ChangeOptInStatusMealInDB(jwtPayload.UserId, requestOptInMeal, db)
+	if err != nil {
+		if errors.Is(err, ErrDataCouldNotBeUpdated) {
+			c.JSON(http.StatusBadRequest, MealError{Error: "This user already has a Preference in this Meal"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, MealSuccess{Message: "Meal Successfully OptIn changed"}) // TODO: later return entire meal preferences for this meal, to have valid frontend.
+}
+
 // AddCookToMeal @Summary Add a cook to a meal
 // @Description Adds a user as a cook to a specific meal within a group. Requires the user to be an admin or owner of the group.
 // @Tags meals
