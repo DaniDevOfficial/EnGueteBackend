@@ -305,7 +305,7 @@ func LeaveGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 	groupId := c.Param("groupId")
-	err = LeaveGroupInDB(groupId, decodedJWT.UserId, db)
+	err = LeaveGroupInDB(groupId, decodedJWT.UserId, db) //TODO: some check for if a user was eiter the last user in a group or if there are no admins left. If he was the last one delete the group and if he was the last admin pick a new one by join-date
 	if err != nil {
 		if errors.Is(err, ErrNoMatchingGroupOrUser) {
 			errorMessage := GroupError{

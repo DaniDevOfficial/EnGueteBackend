@@ -91,10 +91,21 @@ func DeleteMeal(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, MealSuccess{Message: "Meal Sucessfuly deleted"})
 }
 
+// ChangeMealClosedFlag @Summary Change a meals open status
+// @Description Update a meals open status within a specified group. The requesting user must be an admin or owner of the group.
+// @Tags meals
+// @Accept json
+// @Produce json
+// @Param updateClosedFlag body RequestUpdateClosedFlag true "Payload to update the status"
+// @Success 201 {object} MealSuccess "Successfully created new meal with meal ID"
+// @Failure 400 {object} MealError "Invalid request body"
+// @Failure 401 {object} MealError "Unauthorized"
+// @Failure 500 {object} MealError "Internal server error"
+// @Router /meals/open [post]
 func ChangeMealClosedFlag(c *gin.Context, db *sql.DB) {
 	var updateClosedFlag RequestUpdateClosedFlag
 	if c.ShouldBindJSON(&updateClosedFlag) != nil {
-		c.JSON(http.StatusBadRequest, MealError{Error: "Invalid meal id"})
+		c.JSON(http.StatusBadRequest, MealError{Error: "Invalid request body"})
 		return
 	}
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
