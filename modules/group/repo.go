@@ -90,6 +90,33 @@ func CheckIfUserIsAdminOrOwnerOfGroupViaMealIdInDB(mealId string, userId string,
 	return nil
 }
 
+var ErrNotRequiredRights = errors.New("user doesnt have the required rights")
+
+func CheckIfUserIsAdminOrOwnerOfGroupOrCookViaMealIdInDB(mealId string, userId string, db *sql.DB) error {
+	query := `
+	SELECT 
+		1
+	FROM groups g
+	LEFT JOIN meals m ON m.group_id = g.group_id
+	LEFT JOIN user_groups gu ON gu.group_id = g.group_id
+	LEFT JOIN meal_cooks mc ON mc.meal_id = m.meal_id
+	WHERE m.meal_id = $2
+	AND gu.user_id = $1
+	AND g.created_by = $1  OR mc.user_id = $1
+` //TODO: do some table for group admins
+
+	row := db.QueryRow(query, userId, mealId)
+	var exists int
+	if err := row.Scan(&exists); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotRequiredRights
+		}
+		return err
+	}
+
+	return nil
+}
+
 func IsUserMemberOfGroupViaMealId(mealId string, userId string, db *sql.DB) (int, error) {
 	query := `
 	SELECT 

@@ -10,6 +10,8 @@ import (
 	"net/http"
 )
 
+// basic meal functions
+
 // CreateNewMeal @Summary Create a new meal
 // @Description Creates a new meal within a specified group. The requesting user must be an admin or owner of the group.
 // @Tags meals
@@ -88,6 +90,64 @@ func DeleteMeal(c *gin.Context, db *sql.DB) {
 	// here we dont send a update, because the user will be redirected to the all page, where a api request will happen regardeless
 	c.JSON(http.StatusOK, MealSuccess{Message: "Meal Sucessfuly deleted"})
 }
+
+func ChangeMealClosedFlag(c *gin.Context, db *sql.DB) {
+	var updateClosedFlag RequestUpdateClosedFlag
+	if c.ShouldBindJSON(&updateClosedFlag) != nil {
+		c.JSON(http.StatusBadRequest, MealError{Error: "Invalid meal id"})
+		return
+	}
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		return
+	}
+	err = group.CheckIfUserIsAdminOrOwnerOfGroupOrCookViaMealIdInDB(updateClosedFlag.MealId, jwtPayload.UserId, db)
+	if err != nil {
+		if errors.Is(err, group.ErrNotRequiredRights) {
+			c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		}
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+	//TODO: send a notification to all the members of the group.
+	err = UpdateClosedBoolInDB(updateClosedFlag.MealId, updateClosedFlag.CloseFlag, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, MealSuccess{Message: "Meal Successfully updated"})
+}
+
+func ChangeMealFulfilledFlag(c *gin.Context, db *sql.DB) {
+	var updateFulfilledFlag RequestUpdateFulfilledFlag
+	if c.ShouldBindJSON(&updateFulfilledFlag) != nil {
+		c.JSON(http.StatusBadRequest, MealError{Error: "Invalid meal id"})
+		return
+	}
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		return
+	}
+	err = group.CheckIfUserIsAdminOrOwnerOfGroupOrCookViaMealIdInDB(updateFulfilledFlag.MealId, jwtPayload.UserId, db)
+	if err != nil {
+		if errors.Is(err, group.ErrNotRequiredRights) {
+			c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		}
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+	//TODO: send a notification to all the members of the group.
+	err = UpdateMealFulfilledStatus(updateFulfilledFlag.MealId, updateFulfilledFlag.Fulfilled, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, MealSuccess{Message: "Meal Successfully updated"})
+}
+
+// Meal Status per user
 
 // OptInMeal @Summary Opt-in to a meal
 // @Description Allows a user to opt-in to a specific meal within a group. The requesting user must be a member of the group associated with the meal.
@@ -181,6 +241,8 @@ func ChangeOptInMeal(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, MealSuccess{Message: "Meal Successfully OptIn changed"}) // TODO: later return entire meal preferences for this meal, to have valid frontend.
 }
 
+// Meal Cook
+
 // AddCookToMeal @Summary Add a cook to a meal
 // @Description Adds a user as a cook to a specific meal within a group. Requires the user to be an admin or owner of the group.
 // @Tags meals
@@ -260,6 +322,8 @@ func RemoveCookFromMeal(c *gin.Context, db *sql.DB) {
 	// TODO: Send an updated list of users in the meal
 	c.JSON(http.StatusOK, MealSuccess{Message: "Cook removed from meal"})
 }
+
+// Update Meal Info
 
 // UpdateMealTitle @Summary Updated a meals Title
 // @Description Update the Title on a specific meal within a group. Requires the user to be an admin or owner of the group.

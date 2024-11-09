@@ -13,7 +13,7 @@ func RegisterMealRoute(router *gin.Engine, db *sql.DB) {
 }
 
 func registerMealRoutes(router *gin.Engine, db *sql.DB) {
-	router.GET("/meals/:id", func(c *gin.Context) {
+	router.GET("/meals/:mealId", func(c *gin.Context) {
 		// GetMealById(c, db)
 	})
 	router.POST("/meals/", func(c *gin.Context) {
@@ -21,6 +21,12 @@ func registerMealRoutes(router *gin.Engine, db *sql.DB) {
 	})
 	router.DELETE("/meals/:mealId", func(c *gin.Context) {
 		DeleteMeal(c, db)
+	})
+	router.POST("/meals/manage/open/", func(c *gin.Context) {
+		ChangeMealClosedFlag(c, db)
+	})
+	router.POST("/meals/manage/fulfilled", func(c *gin.Context) {
+		ChangeMealFulfilledFlag(c, db)
 	})
 
 }
@@ -31,7 +37,7 @@ func registerOptInRoutes(router *gin.Engine, db *sql.DB) {
 	})
 
 	router.PUT("/meals/optin", func(c *gin.Context) {
-		OptInMeal(c, db)
+		ChangeOptInMeal(c, db)
 	})
 }
 

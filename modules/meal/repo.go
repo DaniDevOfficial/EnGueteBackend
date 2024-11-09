@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+//General
+
 func CreateNewMealInDB(newMeal RequestNewMeal, userId string, db *sql.DB) (string, error) {
 	query := `INSERT INTO meals
 				(title, notes, date_time, meal_type, created_by, group_id)
@@ -26,16 +28,24 @@ func DeleteMealInDB(mealId string, db *sql.DB) error {
 	return err
 }
 
-func AddCookToMealInDB(userId string, groupId string, db *sql.DB) error {
-	query := `INSERT INTO meal_cooks
-    				(user_id, meal_id)
-    				VALUES
-    				($1, $2)`
-	_, err := db.Exec(query, userId, groupId)
+var ErrUserAlreadyHasAPreferenceInSpecificMeal = errors.New("user already has A Preference")
+
+// Flags
+func UpdateClosedBoolInDB(mealId string, isClosed bool, db *sql.DB) error {
+	query := `UPDATE users SET closed=$1 WHERE id=$2 RETURNING closed` // TODO Swap the closed bool from what it currently is
+	var tmp bool
+	err := db.QueryRow(query, isClosed, mealId).Scan(&tmp)
 	return err
 }
 
-var ErrUserAlreadyHasAPreferenceInSpecificMeal = errors.New("user already has A Preference")
+func UpdateMealFulfilledStatus(mealId string, isFulfilled bool, db *sql.DB) error {
+	query := `UPDATE users SET fulfilled=$1 WHERE id=$2 RETURNING fulfilled` // TODO Swap the closed bool from what it currently is
+	var tmp bool
+	err := db.QueryRow(query, isFulfilled, mealId).Scan(&tmp)
+	return err
+}
+
+//OptIn Status
 
 func OptInMealInDB(userId string, optData RequestOptInMeal, db *sql.DB) error {
 	query := `
@@ -82,6 +92,8 @@ func ChangeOptInStatusMealInDB(userId string, optData RequestOptInMeal, db *sql.
 	return nil
 }
 
+// Meal Cooks
+
 var ErrUserWasntACook = errors.New("user wasn't a Cook")
 
 func RemoveCookFromMealInDB(userId string, groupId string, db *sql.DB) error {
@@ -98,7 +110,18 @@ func RemoveCookFromMealInDB(userId string, groupId string, db *sql.DB) error {
 	return err
 }
 
+func AddCookToMealInDB(userId string, groupId string, db *sql.DB) error {
+	query := `INSERT INTO meal_cooks
+    				(user_id, meal_id)
+    				VALUES
+    				($1, $2)`
+	_, err := db.Exec(query, userId, groupId)
+	return err
+}
+
 var ErrDataCouldNotBeUpdated = errors.New("data couldn't be updated")
+
+// Meal Update
 
 func UpdateMealTitleIdDB(mealId string, newTitle string, db *sql.DB) error {
 	query := `

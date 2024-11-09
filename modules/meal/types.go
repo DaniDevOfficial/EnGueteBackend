@@ -21,6 +21,16 @@ type RequestOptInMeal struct {
 	Preference string `json:"preference" binding:"required"`
 }
 
+type RequestUpdateClosedFlag struct {
+	MealId    string `json:"mealId" binding:"required"`
+	CloseFlag bool   `json:"closeFlag" binding:"required"`
+}
+
+type RequestUpdateFulfilledFlag struct {
+	MealId    string `json:"mealId" binding:"required"`
+	Fulfilled bool   `json:"fulfilled" binding:"required"`
+}
+
 type RequestUpdateTitle struct {
 	NewTitle string `json:"newTitle" binding:"required"`
 	MealId   string `json:"mealId" binding:"required"`
