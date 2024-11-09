@@ -17,11 +17,13 @@ invite others to join meal groups.
 
 ### Group Admin (Creator of a Group)
 
-1. [ ] As a group admin, I want to create meal plans for my group.
-2. [ ] As a group admin, I want to update or delete my group.
-3. [ ] As a group admin, I want to see the meal preferences of all members for a given meal.
-4. [ ] As a group admin, I want to remove members from my group if needed.
+1. [x] As a group admin, I want to update or delete my group.
+2. [x] As a group admin, I want to kick/ban/unban members from my group if needed.
 
+### Group Manager (a role in a specific group) Needs to be added
+1. [ ] As a group manager, I want to CRUD meals for my group.
+2. [ ] As a group manager, I want to open / close and manage the fulfilled state of a meal. 
+3. [ ]
 ---
 
 ## Backend API Endpoints

@@ -23,5 +23,10 @@ func registerUserManagementRoutes(router *gin.Engine, db *sql.DB) {
 
 func registerRoleManagementRoutes(router *gin.Engine, db *sql.DB) {
 	//TODO: implement a feature for roles in a specific group
+	router.POST("management/roles", func(c *gin.Context) {
 
+	})
+	router.DELETE("management/roles", func(c *gin.Context) {
+
+	})
 }
