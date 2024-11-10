@@ -135,11 +135,43 @@ func IsUserMemberOfGroupViaMealId(mealId string, userId string, db *sql.DB) (int
 func GetUserRolesInGroup(groupId string, userId string, db *sql.DB) ([]string, error) {
 	query := `
 	SELECT role
-	FROM user_roles_group
+	FROM user_group_roles
 	WHERE user_id = $1
 	AND group_id = $2
 `
 	rows, err := db.Query(query, userId, groupId)
+	var userRoles []string
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+
+		}
+	}(rows)
+	if err != nil {
+		return userRoles, err
+	}
+	for rows.Next() {
+		var userRole string
+		err := rows.Scan(&userRole)
+		if err != nil {
+			return userRoles, err
+		}
+		userRoles = append(userRoles, userRole)
+	}
+	return userRoles, nil
+}
+
+func GetUserRolesInGroupViaMealId(mealId string, userId string, db *sql.DB) ([]string, error) {
+	query := `
+	SELECT ugr.role
+	FROM user_group_roles ugr
+	LEFT JOIN meals m ON m.group_id = g.group_id
+	LEFT JOIN user_groups gu ON gu.group_id = g.group_id
+	WHERE m.meal_id = $2
+	AND user_group_roles.user_id = $1
+	
+`
+	rows, err := db.Query(query, userId, mealId)
 	var userRoles []string
 	defer func(rows *sql.Rows) {
 		err := rows.Close()

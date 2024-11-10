@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"enguete/modules/group"
 	"enguete/util/auth"
+	"enguete/util/roles"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -19,16 +20,18 @@ func KickUserFromGroup(c *gin.Context, db *sql.DB) {
 		c.JSON(http.StatusUnauthorized, ManagementError{Error: "Unauthorized"})
 		return
 	}
+	if jwtPayload.UserId == kickUserData.UserId {
+		c.JSON(http.StatusBadRequest, ManagementError{Error: "You can't kick yourself"})
+	}
 
-	// TODO: some sort of smarter role check, than just a db query to check if user has this role
-	err = group.CheckIfUserIsAdminOrOwnerOfGroupInDB(kickUserData.GroupId, jwtPayload.UserId, db)
-	if err != nil {
+	userRoles, err := group.GetUserRolesInGroup(kickUserData.GroupId, jwtPayload.UserId, db)
+	if !roles.CanPerformAction(userRoles, roles.CanKickUsers) {
 		c.JSON(http.StatusUnauthorized, ManagementError{Error: "Unauthorized"})
 		return
 	}
+
 	err = KickUSerFromGroupInDB(kickUserData.GroupId, kickUserData.UserId, db)
 	if err != nil {
-
 		c.JSON(http.StatusUnauthorized, ManagementError{Error: "Unauthorized"})
 		return
 	}
@@ -49,12 +52,12 @@ func BanUserFromGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// TODO: some sort of smarter role check, than just a db query to check if user has this role
-	err = group.CheckIfUserIsAdminOrOwnerOfGroupInDB(kickUserData.GroupId, jwtPayload.UserId, db)
-	if err != nil {
+	userRoles, err := group.GetUserRolesInGroup(kickUserData.GroupId, jwtPayload.UserId, db)
+	if !roles.CanPerformAction(userRoles, roles.CanBanUsers) {
 		c.JSON(http.StatusUnauthorized, ManagementError{Error: "Unauthorized"})
 		return
 	}
+
 	//TODO: either have a seperate function or a follow up, which adds the userId in a blacklist for this specific group
 	err = KickUSerFromGroupInDB(kickUserData.GroupId, kickUserData.UserId, db)
 	if err != nil {
@@ -77,12 +80,12 @@ func UnbanUserFromGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// TODO: some sort of smarter role check, than just a db query to check if user has this role
-	err = group.CheckIfUserIsAdminOrOwnerOfGroupInDB(kickUserData.GroupId, jwtPayload.UserId, db)
-	if err != nil {
+	userRoles, err := group.GetUserRolesInGroup(kickUserData.GroupId, jwtPayload.UserId, db)
+	if !roles.CanPerformAction(userRoles, roles.CanUnbanUser) {
 		c.JSON(http.StatusUnauthorized, ManagementError{Error: "Unauthorized"})
 		return
 	}
+
 	err = UnBanUserFromGroupInDB(kickUserData.GroupId, kickUserData.UserId, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ManagementError{Error: "Internal server error"})

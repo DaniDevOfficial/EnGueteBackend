@@ -43,7 +43,7 @@ var RolePermissions = map[string]map[string]bool{
 	CanDeleteGroup: {AdminRole: true, ManagerRole: false, MemberRole: false},
 
 	CanBanUsers:  {AdminRole: true, ManagerRole: false, MemberRole: false},
-	CanKickUsers: {AdminRole: true, ManagerRole: true, MemberRole: false},
+	CanKickUsers: {AdminRole: true, ManagerRole: false, MemberRole: false},
 	CanUnbanUser: {AdminRole: true, ManagerRole: false, MemberRole: false},
 
 	CanCreateInviteLinks: {AdminRole: true, ManagerRole: false, MemberRole: false},

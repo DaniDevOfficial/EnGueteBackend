@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"enguete/modules/user"
 	"enguete/util/auth"
+	"enguete/util/roles"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"log"
@@ -22,7 +23,7 @@ import (
 // @Failure 500 {object} group.GroupError
 // @Router /groups [post]
 func CreateNewGroup(c *gin.Context, db *sql.DB) {
-	decodedJWT, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
 
 	if err != nil {
 		errorMessage := GroupError{
@@ -42,7 +43,7 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 	tx, err := db.Begin()
-	newGroupId, err := CreateNewGroupInDBWithTransaction(newGroupData, decodedJWT.UserId, tx)
+	newGroupId, err := CreateNewGroupInDBWithTransaction(newGroupData, jwtPayload.UserId, tx)
 	if err != nil {
 		_ = tx.Rollback()
 		errorMessage := GroupError{
@@ -51,7 +52,7 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
 	}
-	err = AddUserToGroupWithTransaction(newGroupId, decodedJWT.UserId, tx)
+	err = AddUserToGroupWithTransaction(newGroupId, jwtPayload.UserId, tx)
 	if err != nil {
 		_ = tx.Rollback()
 		errorMessage := GroupError{
@@ -75,7 +76,7 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 }
 
 func GetGroupById(c *gin.Context, db *sql.DB) { // TODO: this will be implemented later
-	decodedJWT, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
 	if err != nil {
 		errorMessage := GroupError{
 			Error: "Authorisation is not valid",
@@ -85,7 +86,7 @@ func GetGroupById(c *gin.Context, db *sql.DB) { // TODO: this will be implemente
 	groupId := c.Param("groupId")
 	// DO this later
 	log.Println(groupId)
-	log.Println(decodedJWT.UserId)
+	log.Println(jwtPayload.UserId)
 }
 
 // GenerateInviteLink @Summary Generate an invite link for a group
@@ -101,7 +102,7 @@ func GetGroupById(c *gin.Context, db *sql.DB) { // TODO: this will be implemente
 // @Failure 500 {object} group.GroupError "Internal server error - issues with invite creation or transaction handling"
 // @Router /groups/invite [post]
 func GenerateInviteLink(c *gin.Context, db *sql.DB) {
-	decodedJWT, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
 	if err != nil {
 		errorMessage := GroupError{
 			Error: "Authorisation is not valid",
@@ -120,23 +121,12 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = CheckIfUserIsAdminOrOwnerOfGroupInDB(inviteRequest.GroupId, decodedJWT.UserId, db)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			errorMessage := GroupError{
-				Error: "You are not allowed to do this",
-			}
-			c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
-			return
-		}
-		log.Println(err)
-		errorMessage := GroupError{
-			Error: "Error while checkin authentication",
-		}
-
-		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+	userRoles, err := GetUserRolesInGroup(inviteRequest.GroupId, jwtPayload.UserId, db)
+	if !roles.CanPerformAction(userRoles, roles.CanCreateInviteLinks) {
+		c.JSON(http.StatusUnauthorized, GroupError{Error: "Unauthorized"})
 		return
 	}
+
 	tx, err := db.Begin()
 	if err != nil {
 		errorMessage := GroupError{
@@ -260,6 +250,7 @@ func VoidInviteToken(c *gin.Context, db *sql.DB) {
 		return
 	}
 	inviteToken := c.Param("inviteToken")
+
 	groupId, err := ValidateInviteTokenInDB(inviteToken, db)
 	if err != nil {
 		errorMessage := GroupError{
@@ -268,6 +259,13 @@ func VoidInviteToken(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
 	}
+
+	userRoles, err := GetUserRolesInGroup(groupId, jwtPayload.UserId, db)
+	if !roles.CanPerformAction(userRoles, roles.CanVoidInviteLinks) {
+		c.JSON(http.StatusUnauthorized, GroupError{Error: "Unauthorized"})
+		return
+	}
+
 	err = VoidInviteTokenIfAllowedInDB(groupId, jwtPayload.UserId, db)
 	if err != nil {
 		errorMessage := GroupError{
@@ -276,6 +274,7 @@ func VoidInviteToken(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
 	}
+
 	response := GroupSuccess{
 		Message: "Invite token deleted",
 	}
@@ -296,7 +295,7 @@ func VoidInviteToken(c *gin.Context, db *sql.DB) {
 // @Failure 500 {object} GroupError "Internal server error - error leaving group"
 // @Router /groups/leave/{groupId} [delete]
 func LeaveGroup(c *gin.Context, db *sql.DB) {
-	decodedJWT, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
 	if err != nil {
 		errorMessage := GroupError{
 			Error: "Authorisation is not valid",
@@ -304,8 +303,9 @@ func LeaveGroup(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
 		return
 	}
+
 	groupId := c.Param("groupId")
-	err = LeaveGroupInDB(groupId, decodedJWT.UserId, db) //TODO: some check for if a user was eiter the last user in a group or if there are no admins left. If he was the last one delete the group and if he was the last admin pick a new one by join-date
+	err = LeaveGroupInDB(groupId, jwtPayload.UserId, db) //TODO: some check for if a user was eiter the last user in a group or if there are no admins left. If he was the last one delete the group and if he was the last admin pick a new one by join-date
 	if err != nil {
 		if errors.Is(err, ErrNoMatchingGroupOrUser) {
 			errorMessage := GroupError{

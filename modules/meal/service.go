@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"enguete/modules/group"
 	"enguete/util/auth"
+	"enguete/util/roles"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"log"
@@ -33,11 +34,6 @@ func CreateNewMeal(c *gin.Context, db *sql.DB) {
 	}
 
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
-		return
-	}
-	err = group.CheckIfUserIsAdminOrOwnerOfGroupInDB(newMeal.GroupId, jwtPayload.UserId, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
@@ -75,7 +71,12 @@ func DeleteMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = group.CheckIfUserIsAdminOrOwnerOfGroupViaMealIdInDB(mealId, jwtPayload.UserId, db)
+	userRoles, err := group.GetUserRolesInGroupViaMealId(mealId, jwtPayload.UserId, db)
+	if !roles.CanPerformAction(userRoles, roles.CanDeleteMeal) {
+		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		return
+	}
+
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
@@ -113,6 +114,7 @@ func ChangeMealClosedFlag(c *gin.Context, db *sql.DB) {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
 	}
+	//TODO: role check like the other ones
 	err = group.CheckIfUserIsAdminOrOwnerOfGroupOrCookViaMealIdInDB(updateClosedFlag.MealId, jwtPayload.UserId, db)
 	if err != nil {
 		if errors.Is(err, group.ErrNotRequiredRights) {
@@ -361,8 +363,8 @@ func UpdateMealTitle(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = group.CheckIfUserIsAdminOrOwnerOfGroupViaMealIdInDB(newTitle.MealId, jwtPayload.UserId, db)
-	if err != nil {
+	userRoles, err := group.GetUserRolesInGroupViaMealId(newTitle.MealId, jwtPayload.UserId, db)
+	if !roles.CanPerformAction(userRoles, roles.CanEditMeal) {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
 	}
@@ -402,12 +404,11 @@ func UpdateMealType(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = group.CheckIfUserIsAdminOrOwnerOfGroupViaMealIdInDB(newType.MealId, jwtPayload.UserId, db)
-	if err != nil {
+	userRoles, err := group.GetUserRolesInGroupViaMealId(newType.MealId, jwtPayload.UserId, db)
+	if !roles.CanPerformAction(userRoles, roles.CanEditMeal) {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
 	}
-
 	err = UpdateMealTypeInDB(newType.MealId, newType.NewType, db)
 
 	if err != nil {
@@ -443,12 +444,11 @@ func UpdateMealNotes(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = group.CheckIfUserIsAdminOrOwnerOfGroupViaMealIdInDB(newNotes.MealId, jwtPayload.UserId, db)
-	if err != nil {
+	userRoles, err := group.GetUserRolesInGroupViaMealId(newNotes.MealId, jwtPayload.UserId, db)
+	if !roles.CanPerformAction(userRoles, roles.CanEditMeal) {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
 	}
-
 	err = UpdateMealNotesInDB(newNotes.MealId, newNotes.NewNotes, db)
 
 	if err != nil {
@@ -484,8 +484,8 @@ func UpdateMealScheduledAt(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = group.CheckIfUserIsAdminOrOwnerOfGroupViaMealIdInDB(newScheduledAt.MealId, jwtPayload.UserId, db)
-	if err != nil {
+	userRoles, err := group.GetUserRolesInGroupViaMealId(newScheduledAt.MealId, jwtPayload.UserId, db)
+	if !roles.CanPerformAction(userRoles, roles.CanEditMeal) {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
 	}

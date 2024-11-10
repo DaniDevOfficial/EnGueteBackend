@@ -12,5 +12,6 @@ func InitCustomValidators() {
 			panic("Failed to register custom validator")
 			return
 		}
+		err = v.RegisterStructValidation("validUUID", ValidUUID)
 	}
 }
