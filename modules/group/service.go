@@ -249,7 +249,7 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 // @Failure 400 {object} GroupError "Bad request - error decoding request"
 // @Failure 401 {object} GroupError "Unauthorized - invalid invite token or lack of permissions"
 // @Failure 500 {object} GroupError "Internal server error - error deleting invite token"
-// @Router /groups/invite/join/:inviteToken [post]
+// @Router /groups/invite/:inviteToken [post]
 func VoidInviteToken(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
 	if err != nil {

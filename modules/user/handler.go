@@ -20,7 +20,7 @@ func registerUserRoutes(router *gin.Engine, db *sql.DB) {
 	router.DELETE("/users/", func(c *gin.Context) {
 		DeleteUserWithJWT(c, db)
 	})
-	router.PUT("/users/name/", func(c *gin.Context) {
+	router.PUT("/users/username/", func(c *gin.Context) {
 		UpdateUsername(c, db)
 	})
 	router.PUT("/users/password/", func(c *gin.Context) {
