@@ -118,14 +118,14 @@ func SignIn(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	if !hashing.CheckHashedString(userData.passwordHash, credentials.Password) {
+	if !hashing.CheckHashedString(userData.PasswordHash, credentials.Password) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Wrong Username Or Password"})
 		return
 	}
 
 	jwtUserData := jwt.JWTUser{
-		Username: userData.username,
-		UserId:   userData.userId,
+		Username: userData.Username,
+		UserId:   userData.UserId,
 	}
 	jwtToken, err := jwt.CreateToken(jwtUserData)
 	if err != nil {
@@ -171,8 +171,8 @@ func GetUserById(c *gin.Context, db *sql.DB) {
 	}
 
 	response := ResponseUserData{
-		Username: userData.username,
-		UserID:   userData.userId,
+		Username: userData.Username,
+		UserID:   userData.UserId,
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -356,7 +356,7 @@ func UpdateUserPassword(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errorMessage)
 		return
 	}
-	if !hashing.CheckHashedString(userData.passwordHash, updatePasswordData.OldPassword) {
+	if !hashing.CheckHashedString(userData.PasswordHash, updatePasswordData.OldPassword) {
 
 		errorMessage := UserError{
 			Error: "Your Old password doesnt match",

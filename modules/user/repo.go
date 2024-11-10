@@ -28,7 +28,7 @@ func GetUserByName(username string, db *sql.DB) (UserFromDB, error) {
 				username = $1`
 	row := db.QueryRow(query, username)
 	var userData UserFromDB
-	err := row.Scan(&userData.username, &userData.email, &userData.passwordHash, &userData.userId)
+	err := row.Scan(&userData.Username, &userData.Email, &userData.PasswordHash, &userData.UserId)
 	return userData, err
 }
 
@@ -46,7 +46,7 @@ func GetUserByIdFromDB(userId string, db *sql.DB) (UserFromDB, error) {
 	row := db.QueryRow(query, userId)
 
 	var userData UserFromDB
-	err := row.Scan(&userData.username, &userData.email, &userData.passwordHash, &userData.userId)
+	err := row.Scan(&userData.Username, &userData.Email, &userData.PasswordHash, &userData.UserId)
 	return userData, err
 }
 

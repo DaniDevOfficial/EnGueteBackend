@@ -237,7 +237,7 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, response)
 }
 
-// DeleteInviteToken handles deleting an invite token.
+// VoidInviteToken handles deleting an invite token.
 // @Summary Delete an invite token.
 // @Description Allows a user to delete an invite token. The user must have a valid token and necessary permissions.
 // @Tags groups
@@ -250,7 +250,7 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 // @Failure 401 {object} GroupError "Unauthorized - invalid invite token or lack of permissions"
 // @Failure 500 {object} GroupError "Internal server error - error deleting invite token"
 // @Router /groups/invite/join/:inviteToken [post]
-func DeleteInviteToken(c *gin.Context, db *sql.DB) {
+func VoidInviteToken(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
 	if err != nil {
 		errorMessage := GroupError{
@@ -268,7 +268,7 @@ func DeleteInviteToken(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
 	}
-	err = DeleteInviteTokenIfAllowedInDB(groupId, jwtPayload.UserId, db)
+	err = VoidInviteTokenIfAllowedInDB(groupId, jwtPayload.UserId, db)
 	if err != nil {
 		errorMessage := GroupError{
 			Error: "Error deleting invite token",
@@ -305,7 +305,7 @@ func LeaveGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 	groupId := c.Param("groupId")
-	err = LeaveGroupInDB(groupId, decodedJWT.UserId, db)
+	err = LeaveGroupInDB(groupId, decodedJWT.UserId, db) //TODO: some check for if a user was eiter the last user in a group or if there are no admins left. If he was the last one delete the group and if he was the last admin pick a new one by join-date
 	if err != nil {
 		if errors.Is(err, ErrNoMatchingGroupOrUser) {
 			errorMessage := GroupError{
