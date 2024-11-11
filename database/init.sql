@@ -77,10 +77,10 @@ CREATE TABLE meal_preferences
     user_id       UUID        NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
     preference    VARCHAR(20) NOT NULL CHECK (preference IN ('opt-in', 'opt-out', 'undecided', 'eat later')),
     changed_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
 
-        CONSTRAINT unique_meal_preference UNIQUE (meal_id, user_id)
+    CONSTRAINT unique_meal_preference UNIQUE (meal_id, user_id)
 );
 
 -- Meal_Cooks Table (Many-to-Many Relationship between Meals and Users)

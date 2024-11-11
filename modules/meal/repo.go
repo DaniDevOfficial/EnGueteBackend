@@ -23,7 +23,7 @@ func CreateNewMealInDB(newMeal RequestNewMeal, userId string, db *sql.DB) (strin
 }
 
 func DeleteMealInDB(mealId string, db *sql.DB) error {
-	query := `DELETE FROM meals WHERE id=$1`
+	query := `DELETE FROM meals WHERE meal_id=$1`
 	_, err := db.Exec(query, mealId)
 	return err
 }
@@ -32,14 +32,14 @@ var ErrUserAlreadyHasAPreferenceInSpecificMeal = errors.New("user already has A 
 
 // Flags
 func UpdateClosedBoolInDB(mealId string, isClosed bool, db *sql.DB) error {
-	query := `UPDATE users SET closed=$1 WHERE id=$2 RETURNING closed` // TODO Swap the closed bool from what it currently is
+	query := `UPDATE meals SET closed=$1 WHERE meal_id=$2 RETURNING closed` // TODO Swap the closed bool from what it currently is
 	var tmp bool
 	err := db.QueryRow(query, isClosed, mealId).Scan(&tmp)
 	return err
 }
 
 func UpdateMealFulfilledStatus(mealId string, isFulfilled bool, db *sql.DB) error {
-	query := `UPDATE users SET fulfilled=$1 WHERE id=$2 RETURNING fulfilled` // TODO Swap the closed bool from what it currently is
+	query := `UPDATE meals SET fulfilled=$1 WHERE meal_id=$2 RETURNING fulfilled` // TODO Swap the closed bool from what it currently is
 	var tmp bool
 	err := db.QueryRow(query, isFulfilled, mealId).Scan(&tmp)
 	return err
@@ -96,26 +96,26 @@ func ChangeOptInStatusMealInDB(userId string, optData RequestOptInMeal, db *sql.
 
 var ErrUserWasntACook = errors.New("user wasn't a Cook")
 
-func RemoveCookFromMealInDB(userId string, groupId string, db *sql.DB) error {
+func RemoveCookFromMealInDB(userId string, meal_id string, db *sql.DB) error {
 	query := `
         DELETE FROM meal_cooks 
-        WHERE user_id = $1 AND group_id = $2 
+        WHERE user_id = $1 AND meal_id = $2 
         RETURNING user_id
     `
 	var deletedUserId string
-	err := db.QueryRow(query, userId, groupId).Scan(&deletedUserId)
-	if err == sql.ErrNoRows {
+	err := db.QueryRow(query, userId, meal_id).Scan(&deletedUserId)
+	if errors.Is(err, sql.ErrNoRows) {
 		return ErrUserWasntACook
 	}
 	return err
 }
 
-func AddCookToMealInDB(userId string, groupId string, db *sql.DB) error {
+func AddCookToMealInDB(userId string, mealId string, db *sql.DB) error {
 	query := `INSERT INTO meal_cooks
     				(user_id, meal_id)
     				VALUES
     				($1, $2)`
-	_, err := db.Exec(query, userId, groupId)
+	_, err := db.Exec(query, userId, mealId)
 	return err
 }
 

@@ -62,7 +62,7 @@ func CreateNewMeal(c *gin.Context, db *sql.DB) {
 // @Failure 400 {object} MealError "Invalid request body"
 // @Failure 401 {object} MealError "Unauthorized user or insufficient permissions"
 // @Failure 500 {object} MealError "Internal server error"
-// @Router /meals [delete]
+// @Router /meals/:mealId [delete]
 func DeleteMeal(c *gin.Context, db *sql.DB) {
 	mealId := c.Param("mealId")
 	if mealId == "" {
@@ -193,7 +193,6 @@ func OptInMeal(c *gin.Context, db *sql.DB) {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
 	}
-
 	err = OptInMealInDB(jwtPayload.UserId, requestOptInMeal, db)
 	if err != nil {
 		if errors.Is(err, ErrDataCouldNotBeUpdated) {
@@ -277,12 +276,12 @@ func AddCookToMeal(c *gin.Context, db *sql.DB) {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
 	}
-	err = group.CheckIfUserIsAdminOrOwnerOfGroupInDB(addCookToMealData.GroupId, jwtPayload.UserId, db)
+	err = group.CheckIfUserIsAdminOrOwnerOfGroupViaMealIdInDB(addCookToMealData.MealId, jwtPayload.UserId, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
 	}
-	err = AddCookToMealInDB(addCookToMealData.UserId, addCookToMealData.UserId, db)
+	err = AddCookToMealInDB(addCookToMealData.UserId, addCookToMealData.MealId, db)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
@@ -315,12 +314,12 @@ func RemoveCookFromMeal(c *gin.Context, db *sql.DB) {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
 	}
-	err = group.CheckIfUserIsAdminOrOwnerOfGroupInDB(removeCookFromMealData.GroupId, jwtPayload.UserId, db)
+	err = group.CheckIfUserIsAdminOrOwnerOfGroupViaMealIdInDB(removeCookFromMealData.MealId, jwtPayload.UserId, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
 	}
-	err = RemoveCookFromMealInDB(removeCookFromMealData.UserId, removeCookFromMealData.GroupId, db)
+	err = RemoveCookFromMealInDB(removeCookFromMealData.UserId, removeCookFromMealData.MealId, db)
 	if err != nil {
 		if errors.Is(err, ErrUserWasntACook) {
 			c.JSON(http.StatusUnauthorized, MealError{Error: "User was not a cook"})
@@ -346,7 +345,7 @@ func RemoveCookFromMeal(c *gin.Context, db *sql.DB) {
 // @Failure 400 {object} MealError "Invalid request body"
 // @Failure 401 {object} MealError "Unauthorized user or insufficient permissions"
 // @Failure 500 {object} MealError "Internal server error"
-// @Router /meals/ [post]
+// @Router /meals/title [post]
 func UpdateMealTitle(c *gin.Context, db *sql.DB) {
 	var newTitle RequestUpdateTitle
 
