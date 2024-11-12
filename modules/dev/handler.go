@@ -1,14 +1,13 @@
 package dev
 
 import (
-	"database/sql"
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterDevRoutes(router *gin.Engine, db *sql.DB) {
-	registerTestRoutes(router, db)
+func RegisterDevRoutes(router *gin.Engine) {
+	registerTestRoutes(router)
 }
-func registerTestRoutes(router *gin.Engine, db *sql.DB) {
+func registerTestRoutes(router *gin.Engine) {
 
 	router.POST("/test/jwtAuth", func(c *gin.Context) {
 		CheckValidJWT(c)

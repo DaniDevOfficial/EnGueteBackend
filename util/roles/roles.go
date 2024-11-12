@@ -8,6 +8,9 @@ const (
 	CanCreateMeal      = "can_create_meal"
 	CanChangeMealFlags = "can_change_meal_flags"
 
+	CanForceAddCook    = "can_force_add_cook"
+	CanForceRemoveCook = "can_force_remove_cook"
+
 	CanUpdateGroup = "can_update_group"
 	CanDeleteGroup = "can_delete_group"
 
@@ -38,6 +41,9 @@ var RolePermissions = map[string]map[string]bool{
 	CanDeleteMeal:      {AdminRole: true, ManagerRole: true, MemberRole: false},
 	CanCreateMeal:      {AdminRole: true, ManagerRole: true, MemberRole: false},
 	CanChangeMealFlags: {AdminRole: true, ManagerRole: true, MemberRole: false},
+
+	CanForceAddCook:    {AdminRole: true, ManagerRole: true, MemberRole: false},
+	CanForceRemoveCook: {AdminRole: true, ManagerRole: true, MemberRole: false},
 
 	CanUpdateGroup: {AdminRole: true, ManagerRole: true, MemberRole: false},
 	CanDeleteGroup: {AdminRole: true, ManagerRole: false, MemberRole: false},

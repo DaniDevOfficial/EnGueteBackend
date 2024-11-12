@@ -49,14 +49,12 @@ type RequestUpdateScheduledAt struct {
 }
 
 type RequestAddCookToMeal struct {
-	UserId  string `json:"userId" binding:"required"`
-	GroupId string `json:"groupId" binding:"required"`
-	MealId  string `json:"mealId" binding:"required"`
+	UserId string `json:"userId" binding:"required"`
+	MealId string `json:"mealId" binding:"required"`
 }
 type RequestRemoveCook struct {
-	UserId  string `json:"userId" binding:"required"`
-	GroupId string `json:"groupId" binding:"required"`
-	MealId  string `json:"mealId" binding:"required"`
+	UserId string `json:"userId" binding:"required"`
+	MealId string `json:"mealId" binding:"required"`
 }
 
 type ResponseNewMeal struct {

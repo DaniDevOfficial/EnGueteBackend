@@ -32,8 +32,8 @@ func main() {
 	router.GET("/documentation/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	router.Use(corsMiddleware())
+	dev.RegisterDevRoutes(router)
 	user.RegisterUserRoute(router, dbConnection)
-	dev.RegisterDevRoutes(router, dbConnection)
 	group.RegisterGroupRoute(router, dbConnection)
 	meal.RegisterMealRoute(router, dbConnection)
 	fmt.Println("🚀 Server is listening on http://localhost:8000/")
