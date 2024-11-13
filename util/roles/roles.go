@@ -3,7 +3,7 @@ package roles
 import "log"
 
 const (
-	CanEditMeal        = "can_edit_meal"
+	CanUpdateMeal      = "can_update_meal"
 	CanDeleteMeal      = "can_delete_meal"
 	CanCreateMeal      = "can_create_meal"
 	CanChangeMealFlags = "can_change_meal_flags"
@@ -37,7 +37,7 @@ const (
 )
 
 var RolePermissions = map[string]map[string]bool{
-	CanEditMeal:        {AdminRole: true, ManagerRole: true, MemberRole: false},
+	CanUpdateMeal:      {AdminRole: true, ManagerRole: true, MemberRole: false},
 	CanDeleteMeal:      {AdminRole: true, ManagerRole: true, MemberRole: false},
 	CanCreateMeal:      {AdminRole: true, ManagerRole: true, MemberRole: false},
 	CanChangeMealFlags: {AdminRole: true, ManagerRole: true, MemberRole: false},

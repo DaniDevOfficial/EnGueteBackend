@@ -121,7 +121,6 @@ func GetUserRolesInGroupViaMealId(mealId string, userId string, db *sql.DB) ([]s
 	LEFT JOIN user_groups gu ON gu.group_id = g.group_id
 	WHERE m.meal_id = $2
 	AND user_group_roles.user_id = $1
-	
 `
 	rows, err := db.Query(query, userId, mealId)
 	var userRoles []string

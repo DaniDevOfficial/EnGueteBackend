@@ -18,6 +18,7 @@ type RequestNewMeal struct {
 
 type RequestOptInMeal struct {
 	MealId     string `json:"mealId" binding:"required"`
+	UserId     string `json:"userId" binding:"required"`
 	Preference string `json:"preference" binding:"required"`
 }
 
