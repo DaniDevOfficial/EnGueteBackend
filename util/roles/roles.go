@@ -66,6 +66,9 @@ var RolePermissions = map[string]map[string]bool{
 
 func CanPerformAction(roles []string, action string) bool {
 	canDoSpecificAction := RolePermissions[action]
+	if canDoSpecificAction == nil {
+		return false
+	}
 	for _, role := range roles {
 		if canDoSpecificAction[role] == true {
 			return true

@@ -88,7 +88,8 @@ func DeleteMeal(c *gin.Context, db *sql.DB) {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
 	}
-	// here we dont send a update, because the user will be redirected to the all page, where a api request will happen regardeless
+	// here we dont se
+	//nd a update, because the user will be redirected to the all page, where a api request will happen regardeless
 	c.JSON(http.StatusOK, MealSuccess{Message: "Meal Sucessfuly deleted"})
 }
 
@@ -274,21 +275,42 @@ func AddCookToMeal(c *gin.Context, db *sql.DB) {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
 	}
-	userRoles, err := group.GetUserRolesInGroupViaMealId(addCookToMealData.MealId, jwtPayload.UserId, db)
-	if !roles.CanPerformAction(userRoles, roles.CanForceAddCook) { // TODO: allow always if you add yourself
-		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
-		return
+
+	isSelfAdd := addCookToMealData.UserId == jwtPayload.UserId
+
+	if !isSelfAdd {
+		canPerformAction, err := CheckIfUserIsAllowedToPerformActionViaMealId(addCookToMealData.MealId, jwtPayload.UserId, roles.CanForceAddCook, db)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+			return
+		}
+		if !canPerformAction {
+			c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
+		}
+	} else {
+		isGroupMember, err := IsUserInGroupViaMealId(addCookToMealData.MealId, addCookToMealData.UserId, db)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+			return
+		}
+		if !isGroupMember {
+			c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+			return
+		}
+
 	}
 
-	//TODO: I dont check if user is even part of the group.
 	err = AddCookToMealInDB(addCookToMealData.UserId, addCookToMealData.UserId, db)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
 	}
-	//TODO: Send notification to user who got added as a cook
+	if !isSelfAdd {
+		//TODO: Send notification to user who got added as a cook
+	}
 	//TODO: Send an updated list of users in the meal
+
 	c.JSON(http.StatusCreated, MealSuccess{Message: "Cook added to meal"})
 }
 
@@ -362,6 +384,11 @@ func UpdateMealTitle(c *gin.Context, db *sql.DB) {
 	}
 
 	userRoles, err := group.GetUserRolesInGroupViaMealId(newTitle.MealId, jwtPayload.UserId, db)
+	if err != nil {
+		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
+			c.JSON(http.StatusBadRequest, MealError{Error: "This user is not a part of the group"})
+		}
+	}
 	if !roles.CanPerformAction(userRoles, roles.CanEditMeal) {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return

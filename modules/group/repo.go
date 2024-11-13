@@ -3,7 +3,6 @@ package group
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 )
 
@@ -43,79 +42,7 @@ func AddUserToGroupWithTransaction(groupId string, userId string, tx *sql.Tx) er
 	return err
 }
 
-func CheckIfUserIsAdminOrOwnerOfGroupInDB(groupId string, userId string, db *sql.DB) error {
-	query := `
-	SELECT 
-		1
-	FROM groups g
-	LEFT JOIN user_groups gu ON gu.group_id = g.group_id
-	WHERE gu.user_id = $1
-	AND g.created_by = $1
-	AND g.group_id = $2
-` //TODO: do some table for group admins
-
-	row := db.QueryRow(query, userId, groupId)
-	var exists int
-	if err := row.Scan(&exists); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("user is neither admin nor owner of the group")
-		}
-		return err
-	}
-
-	return nil
-}
-
-func CheckIfUserIsAdminOrOwnerOfGroupViaMealIdInDB(mealId string, userId string, db *sql.DB) error {
-	query := `
-	SELECT 
-		1
-	FROM groups g
-	LEFT JOIN meals m ON m.group_id = g.group_id
-	LEFT JOIN user_groups gu ON gu.group_id = g.group_id
-	WHERE m.meal_id = $2
-	AND gu.user_id = $1
-	AND g.created_by = $1
-` //TODO: do some table for group admins
-
-	row := db.QueryRow(query, userId, mealId)
-	var exists int
-	if err := row.Scan(&exists); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("user is neither admin nor owner of the group")
-		}
-		return err
-	}
-
-	return nil
-}
-
-var ErrNotRequiredRights = errors.New("user doesnt have the required rights")
-
-func CheckIfUserIsAdminOrOwnerOfGroupOrCookViaMealIdInDB(mealId string, userId string, db *sql.DB) error {
-	query := `
-	SELECT 
-		1
-	FROM groups g
-	LEFT JOIN meals m ON m.group_id = g.group_id
-	LEFT JOIN user_groups gu ON gu.group_id = g.group_id
-	LEFT JOIN meal_cooks mc ON mc.meal_id = m.meal_id
-	WHERE m.meal_id = $2
-	AND gu.user_id = $1
-	AND g.created_by = $1  OR mc.user_id = $1
-` //TODO: do some table for group admins
-
-	row := db.QueryRow(query, userId, mealId)
-	var exists int
-	if err := row.Scan(&exists); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrNotRequiredRights
-		}
-		return err
-	}
-
-	return nil
-}
+var ErrUserIsNotPartOfThisGroup = errors.New("user is not part of this group")
 
 func IsUserMemberOfGroupViaMealId(mealId string, userId string, db *sql.DB) (int, error) {
 	query := `
@@ -129,6 +56,31 @@ func IsUserMemberOfGroupViaMealId(mealId string, userId string, db *sql.DB) (int
 `
 	var exists int
 	err := db.QueryRow(query, userId, mealId).Scan(&exists)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return exists, ErrUserIsNotPartOfThisGroup
+		}
+	}
+	return exists, err
+}
+
+func IsUserMemberOfGroupInDB(groupId string, userId string, db *sql.DB) (int, error) {
+	query := `
+	SELECT 
+		1
+	FROM user_groups gu
+	WHERE gu.group_id = $2
+	AND gu.user_id = $1
+`
+	var exists int
+	err := db.QueryRow(query, userId, groupId).Scan(&exists)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return exists, ErrUserIsNotPartOfThisGroup
+		}
+	}
 	return exists, err
 }
 
@@ -180,6 +132,9 @@ func GetUserRolesInGroupViaMealId(mealId string, userId string, db *sql.DB) ([]s
 		}
 	}(rows)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return userRoles, ErrUserIsNotPartOfThisGroup
+		}
 		return userRoles, err
 	}
 	for rows.Next() {
