@@ -9,6 +9,17 @@ import (
 	"net/http"
 )
 
+// KickUserFromGroup @Summary Kick a user from a group
+// @Description Allows a user to kick another user within a group. The requesting user must be a member of the group and have the required rights to perform this action.
+// @Tags meals
+// @Accept json
+// @Produce json
+// @Param requestKickUser body RequestKickUser true "Payload Kick user from group"
+// @Success 200 {object} ManagementSuccess "User successfully kicked from group"
+// @Failure 400 {object} ManagementError "Invalid request body or user tries to kick himself"
+// @Failure 401 {object} ManagementError "Unauthorized user or insufficient permissions"
+// @Failure 500 {object} ManagementError "Internal server error"
+// @Router /management/user/kick [post]
 func KickUserFromGroup(c *gin.Context, db *sql.DB) {
 	var kickUserData RequestKickUser
 	if err := c.ShouldBind(&kickUserData); err != nil {
@@ -25,7 +36,7 @@ func KickUserFromGroup(c *gin.Context, db *sql.DB) {
 		c.JSON(http.StatusBadRequest, ManagementError{Error: "You can't kick yourself"})
 	}
 
-	canPerformAction, err := meal.CheckIfUserIsAllowedToPerformAction(kickUserData.GroupId, jwtPayload.UserId, roles.CanBanUsers, db)
+	canPerformAction, err := meal.CheckIfUserIsAllowedToPerformAction(kickUserData.GroupId, jwtPayload.UserId, roles.CanKickUsers, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ManagementError{Error: "Internal server error"})
 		return
@@ -45,6 +56,17 @@ func KickUserFromGroup(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, ManagementSuccess{Message: "user successfully kicked"})
 }
 
+// BanUserFromGroup @Summary Ban a user from a group
+// @Description Allows a user to ban another user within a group, and add him to the banned List. The requesting user must be a member of the group and have the required rights to perform this action.
+// @Tags meals
+// @Accept json
+// @Produce json
+// @Param requestKickUser body RequestKickUser true "Payload to ban user from group"
+// @Success 200 {object} ManagementSuccess "User successfully banned from group"
+// @Failure 400 {object} ManagementError "Invalid request body or user tries to ban himself"
+// @Failure 401 {object} ManagementError "Unauthorized user or insufficient permissions"
+// @Failure 500 {object} ManagementError "Internal server error"
+// @Router /management/user/kick [post]
 func BanUserFromGroup(c *gin.Context, db *sql.DB) {
 	var kickUserData RequestKickUser
 	if err := c.ShouldBind(&kickUserData); err != nil {
@@ -83,6 +105,17 @@ func BanUserFromGroup(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, ManagementSuccess{Message: "user successfully kicked"})
 }
 
+// UnbanUserFromGroup  @Summary unban a user from a group
+// @Description Allows a user to unban another user within a group, and remove him from the banned List. The requesting user must be a member of the group and have the required rights to perform this action.
+// @Tags meals
+// @Accept json
+// @Produce json
+// @Param requestKickUser body RequestKickUser true "Payload to unban user from group"
+// @Success 200 {object} ManagementSuccess "User successfully unbanned from group"
+// @Failure 400 {object} ManagementError "Invalid request body"
+// @Failure 401 {object} ManagementError "Unauthorized user or insufficient permissions"
+// @Failure 500 {object} ManagementError "Internal server error"
+// @Router /management/user/kick [post]
 func UnbanUserFromGroup(c *gin.Context, db *sql.DB) {
 	var kickUserData RequestKickUser
 	if err := c.ShouldBind(&kickUserData); err != nil {

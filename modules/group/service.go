@@ -215,18 +215,12 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 	}
 
 	result, err := AddUserToGroupInDB(groupId, jwtPayload.UserId, db)
-	if !result {
-		errorMessage := GroupError{
-			Error: "User already in group",
-		}
-		c.AbortWithStatusJSON(http.StatusBadRequest, errorMessage)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error adding user to group"})
 		return
 	}
-	if err != nil {
-		errorMessage := GroupError{
-			Error: "Error adding user to group",
-		}
-		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+	if !result {
+		c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "User already in group"})
 		return
 	}
 
