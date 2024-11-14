@@ -4,6 +4,7 @@ import (
 	_ "enguete/docs"
 	"enguete/modules/dev"
 	"enguete/modules/group"
+	"enguete/modules/management"
 	"enguete/modules/meal"
 	"enguete/modules/user"
 	"enguete/util/auth"
@@ -36,6 +37,7 @@ func main() {
 	user.RegisterUserRoute(router, dbConnection)
 	group.RegisterGroupRoute(router, dbConnection)
 	meal.RegisterMealRoute(router, dbConnection)
+	management.RegisterManagementRoute(router, dbConnection)
 	fmt.Println("🚀 Server is listening on http://localhost:8000/")
 	log.Fatal(router.Run("localhost:8000"))
 }

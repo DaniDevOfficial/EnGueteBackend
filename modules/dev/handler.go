@@ -15,4 +15,7 @@ func registerTestRoutes(router *gin.Engine) {
 	router.GET("/test/getAllUsers", func(c *gin.Context) {
 		CheckValidJWT(c)
 	})
+	router.POST("/test/uuid", func(c *gin.Context) {
+		ValidUUIDCheck(c)
+	})
 }

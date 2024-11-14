@@ -34,3 +34,14 @@ func CheckValidJWT(c *gin.Context) {
 func GetAllUsers(c *gin.Context, db *sql.DB) {
 
 }
+
+func ValidUUIDCheck(c *gin.Context) {
+	var requestData struct {
+		UUID string `json:"uuid" binding:"required,uuid"`
+	}
+	if err := c.ShouldBindJSON(&requestData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "UUID is valid"})
+}

@@ -9,6 +9,6 @@ type ManagementSuccess struct {
 }
 
 type RequestKickUser struct {
-	UserId  string `json:"userId" binding:"required"`
-	GroupId string `json:"groupId" binding:"required"`
+	UserId  string `json:"userId" binding:"required,uuid"`
+	GroupId string `json:"groupId" binding:"required,uuid"`
 }

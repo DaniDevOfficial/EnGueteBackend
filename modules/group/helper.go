@@ -1,8 +1,7 @@
-package meal
+package group
 
 import (
 	"database/sql"
-	"enguete/modules/group"
 	"enguete/util/roles"
 	"errors"
 )
@@ -15,9 +14,9 @@ import (
 //
 // return false => user is not in group
 func IsUserInGroupViaMealId(mealId string, userId string, db *sql.DB) (bool, error) {
-	_, err := group.IsUserMemberOfGroupViaMealId(mealId, userId, db)
+	_, err := IsUserMemberOfGroupViaMealId(mealId, userId, db)
 	if err != nil {
-		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
+		if errors.Is(err, ErrUserIsNotPartOfThisGroup) {
 			return false, nil // Not in group, but no internal error
 		}
 		return false, err // Internal error occurred
@@ -33,9 +32,9 @@ func IsUserInGroupViaMealId(mealId string, userId string, db *sql.DB) (bool, err
 //
 // return false => user is not in group
 func IsUserInGroup(groupId string, userId string, db *sql.DB) (bool, error) {
-	_, err := group.IsUserMemberOfGroupInDB(groupId, userId, db)
+	_, err := IsUserMemberOfGroupInDB(groupId, userId, db)
 	if err != nil {
-		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
+		if errors.Is(err, ErrUserIsNotPartOfThisGroup) {
 			return false, nil // Not in group, but no internal error
 		}
 		return false, err // Internal error occurred
@@ -51,9 +50,9 @@ func IsUserInGroup(groupId string, userId string, db *sql.DB) (bool, error) {
 //
 // return false => user is not in group or cant perform action
 func CheckIfUserIsAllowedToPerformActionViaMealId(mealId string, userId string, actionToPerform string, db *sql.DB) (bool, error) {
-	userRoles, err := group.GetUserRolesInGroupViaMealId(mealId, userId, db)
+	userRoles, err := GetUserRolesInGroupViaMealId(mealId, userId, db)
 	if err != nil {
-		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
+		if errors.Is(err, ErrUserIsNotPartOfThisGroup) {
 			return false, nil
 		}
 		return false, err
@@ -69,9 +68,9 @@ func CheckIfUserIsAllowedToPerformActionViaMealId(mealId string, userId string, 
 //
 // return false => user is not in group or cant perform action
 func CheckIfUserIsAllowedToPerformAction(groupId string, userId string, actionToPerform string, db *sql.DB) (bool, error) {
-	userRoles, err := group.GetUserRolesInGroup(groupId, userId, db)
+	userRoles, err := GetUserRolesInGroup(groupId, userId, db)
 	if err != nil {
-		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
+		if errors.Is(err, ErrUserIsNotPartOfThisGroup) {
 			return false, nil
 		}
 		return false, err

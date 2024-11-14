@@ -13,7 +13,7 @@ type RequestNewGroup struct {
 }
 
 type InviteLinkGenerationRequest struct {
-	GroupId            string `json:"groupId" binding:"required"`
+	GroupId            string `json:"groupId" binding:"required,uuid"`
 	ExpirationDateTime string `json:"expirationDateTime"`
 }
 

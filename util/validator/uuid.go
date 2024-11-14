@@ -2,11 +2,10 @@ package validator
 
 import (
 	"github.com/go-playground/validator/v10"
-	"regexp"
+	"github.com/satori/go.uuid"
 )
 
-func ValidUUID(fl validator.FieldLevel) bool {
-	uuidRegex := `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$`
-	re := regexp.MustCompile(uuidRegex)
-	return re.MatchString(fl.Field().String())
+func IsValidUUID(fl validator.FieldLevel) bool {
+	_, err := uuid.FromString(fl.Field().String())
+	return err == nil
 }

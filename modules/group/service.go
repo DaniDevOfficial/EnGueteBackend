@@ -2,7 +2,6 @@ package group
 
 import (
 	"database/sql"
-	"enguete/modules/meal"
 	"enguete/modules/user"
 	"enguete/util/auth"
 	"enguete/util/roles"
@@ -108,6 +107,7 @@ func GetGroupById(c *gin.Context, db *sql.DB) { // TODO: this will be implemente
 // @Router /groups/invite [post]
 func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	log.Println(1)
 	if err != nil {
 		errorMessage := GroupError{
 			Error: "Authorisation is not valid",
@@ -115,7 +115,7 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
 		return
 	}
-
+	log.Println(2)
 	var inviteRequest InviteLinkGenerationRequest
 	if err := c.ShouldBindJSON(&inviteRequest); err != nil {
 		errorMessage := GroupError{
@@ -124,8 +124,8 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errorMessage)
 		return
 	}
-
-	canPerformAction, err := meal.CheckIfUserIsAllowedToPerformAction(inviteRequest.GroupId, jwtPayload.UserId, roles.CanCreateInviteLinks, db)
+	log.Println(3)
+	canPerformAction, err := CheckIfUserIsAllowedToPerformAction(inviteRequest.GroupId, jwtPayload.UserId, roles.CanCreateInviteLinks, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
 		return
@@ -133,6 +133,7 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 	if !canPerformAction {
 		c.JSON(http.StatusUnauthorized, GroupError{Error: "You are not allowed to perform this action"})
 	}
+	log.Println(4)
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -142,6 +143,7 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
 	}
+	log.Println(5)
 
 	token, err := CreateNewInviteInDBWithTransaction(inviteRequest.GroupId, tx)
 	if err != nil {
@@ -153,6 +155,7 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
 	}
+	log.Println(6)
 
 	err = tx.Commit()
 	if err != nil {
@@ -162,6 +165,7 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
 	}
+	log.Println(7)
 
 	fullLink := auth.GenerateInviteLink(token)
 	c.JSON(http.StatusCreated, InviteLinkGenerationResponse{
@@ -261,7 +265,7 @@ func VoidInviteToken(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := meal.CheckIfUserIsAllowedToPerformAction(groupId, jwtPayload.UserId, roles.CanVoidInviteLinks, db)
+	canPerformAction, err := CheckIfUserIsAllowedToPerformAction(groupId, jwtPayload.UserId, roles.CanVoidInviteLinks, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
 		return
