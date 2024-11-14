@@ -2,6 +2,7 @@ package group
 
 import (
 	"database/sql"
+	"enguete/modules/meal"
 	"enguete/modules/user"
 	"enguete/util/auth"
 	"enguete/util/roles"
@@ -42,7 +43,9 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, errorMessage)
 		return
 	}
+
 	tx, err := db.Begin()
+
 	newGroupId, err := CreateNewGroupInDBWithTransaction(newGroupData, jwtPayload.UserId, tx)
 	if err != nil {
 		_ = tx.Rollback()
@@ -52,6 +55,7 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
 	}
+
 	err = AddUserToGroupWithTransaction(newGroupId, jwtPayload.UserId, tx)
 	if err != nil {
 		_ = tx.Rollback()
@@ -61,6 +65,7 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
 	}
+
 	err = tx.Commit()
 	if err != nil {
 		errorMessage := GroupError{
@@ -69,10 +74,10 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
 	}
-	response := ResponseNewGroup{
+
+	c.JSON(http.StatusCreated, ResponseNewGroup{
 		GroupId: newGroupId,
-	}
-	c.JSON(http.StatusCreated, response)
+	})
 }
 
 func GetGroupById(c *gin.Context, db *sql.DB) { // TODO: this will be implemented later
@@ -112,7 +117,6 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 	}
 
 	var inviteRequest InviteLinkGenerationRequest
-
 	if err := c.ShouldBindJSON(&inviteRequest); err != nil {
 		errorMessage := GroupError{
 			Error: "Error decoding request",
@@ -121,10 +125,13 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	userRoles, err := GetUserRolesInGroup(inviteRequest.GroupId, jwtPayload.UserId, db)
-	if !roles.CanPerformAction(userRoles, roles.CanCreateInviteLinks) {
-		c.JSON(http.StatusUnauthorized, GroupError{Error: "Unauthorized"})
+	canPerformAction, err := meal.CheckIfUserIsAllowedToPerformAction(inviteRequest.GroupId, jwtPayload.UserId, roles.CanCreateInviteLinks, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
 		return
+	}
+	if !canPerformAction {
+		c.JSON(http.StatusUnauthorized, GroupError{Error: "You are not allowed to perform this action"})
 	}
 
 	tx, err := db.Begin()
@@ -146,6 +153,7 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
 	}
+
 	err = tx.Commit()
 	if err != nil {
 		errorMessage := GroupError{
@@ -154,11 +162,11 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
 	}
+
 	fullLink := auth.GenerateInviteLink(token)
-	inviteLinkResponse := InviteLinkGenerationResponse{
+	c.JSON(http.StatusCreated, InviteLinkGenerationResponse{
 		InviteLink: fullLink,
-	}
-	c.JSON(http.StatusCreated, inviteLinkResponse)
+	})
 }
 
 // JoinGroupWithInviteToken handles joining a group via an invite token.
@@ -184,8 +192,8 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
 		return
 	}
+
 	inviteToken := c.Param("inviteToken")
-	log.Println(inviteToken)
 	groupId, err := ValidateInviteTokenInDB(inviteToken, db)
 	if err != nil {
 		log.Println(err)
@@ -221,10 +229,9 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
 	}
-	response := GroupSuccess{
-		Message: "User added to group",
-	}
-	c.JSON(http.StatusOK, response)
+
+	//TODO: this will maybe just return the groupId and then in the frontend the redirection will get handled
+	c.JSON(http.StatusOK, GroupSuccess{Message: "User added to group"})
 }
 
 // VoidInviteToken handles deleting an invite token.
@@ -249,8 +256,8 @@ func VoidInviteToken(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
 		return
 	}
-	inviteToken := c.Param("inviteToken")
 
+	inviteToken := c.Param("inviteToken")
 	groupId, err := ValidateInviteTokenInDB(inviteToken, db)
 	if err != nil {
 		errorMessage := GroupError{
@@ -260,10 +267,13 @@ func VoidInviteToken(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	userRoles, err := GetUserRolesInGroup(groupId, jwtPayload.UserId, db)
-	if !roles.CanPerformAction(userRoles, roles.CanVoidInviteLinks) {
-		c.JSON(http.StatusUnauthorized, GroupError{Error: "Unauthorized"})
+	canPerformAction, err := meal.CheckIfUserIsAllowedToPerformAction(groupId, jwtPayload.UserId, roles.CanVoidInviteLinks, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
 		return
+	}
+	if !canPerformAction {
+		c.JSON(http.StatusUnauthorized, GroupError{Error: "You are not allowed to perform this action"})
 	}
 
 	err = VoidInviteTokenIfAllowedInDB(groupId, jwtPayload.UserId, db)
@@ -275,10 +285,7 @@ func VoidInviteToken(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	response := GroupSuccess{
-		Message: "Invite token deleted",
-	}
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, GroupSuccess{Message: "Invite token deleted"})
 }
 
 // LeaveGroup handles a user leaving a group.
@@ -321,8 +328,6 @@ func LeaveGroup(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
 	}
-	response := GroupSuccess{
-		Message: "User left group",
-	}
-	c.JSON(http.StatusOK, response)
+
+	c.JSON(http.StatusOK, GroupSuccess{Message: "User left group"})
 }
