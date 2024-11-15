@@ -44,6 +44,9 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 	}
 
 	tx, err := db.Begin()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
+	}
 
 	newGroupId, err := CreateNewGroupInDBWithTransaction(newGroupData, jwtPayload.UserId, tx)
 	if err != nil {
@@ -62,6 +65,20 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 			Error: "Error Adding User to Group",
 		}
 		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		return
+	}
+
+	err = AddRoleToUserInGroupWithTransaction(newGroupId, jwtPayload.UserId, roles.AdminRole, tx)
+	if err != nil {
+		_ = tx.Rollback()
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Group"})
+		return
+	}
+
+	err = AddRoleToUserInGroupWithTransaction(newGroupId, jwtPayload.UserId, roles.MemberRole, tx)
+	if err != nil {
+		_ = tx.Rollback()
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Group"})
 		return
 	}
 
@@ -218,13 +235,34 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	result, err := AddUserToGroupInDB(groupId, jwtPayload.UserId, db)
+	tx, err := db.Begin()
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error adding user to group"})
+		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
+	}
+
+	err = AddUserToGroupWithTransaction(groupId, jwtPayload.UserId, tx)
+	if err != nil {
+		_ = tx.Rollback()
+		errorMessage := GroupError{
+			Error: "Error Adding User to Group",
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
 	}
-	if !result {
-		c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "User already in group"})
+
+	err = AddRoleToUserInGroupWithTransaction(groupId, jwtPayload.UserId, roles.MemberRole, tx)
+	if err != nil {
+		_ = tx.Rollback()
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Group"})
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		errorMessage := GroupError{
+			Error: "Error Adding User to Group",
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
 		return
 	}
 

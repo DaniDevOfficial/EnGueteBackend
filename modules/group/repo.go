@@ -42,6 +42,12 @@ func AddUserToGroupWithTransaction(groupId string, userId string, tx *sql.Tx) er
 	return err
 }
 
+func AddRoleToUserInGroupWithTransaction(groupId string, userId string, role string, tx *sql.Tx) error {
+	query := `INSERT INTO user_group_roles (group_id, user_id, role) VALUES ($1, $2, $3)`
+	_, err := tx.Exec(query, groupId, userId, role)
+	return err
+}
+
 var ErrUserIsNotPartOfThisGroup = errors.New("user is not part of this group")
 
 func IsUserMemberOfGroupViaMealId(mealId string, userId string, db *sql.DB) (int, error) {
@@ -92,6 +98,14 @@ func GetUserRolesInGroup(groupId string, userId string, db *sql.DB) ([]string, e
 	AND group_id = $2
 `
 	rows, err := db.Query(query, userId, groupId)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUserIsNotPartOfThisGroup
+		}
+		return nil, err
+	}
+
 	var userRoles []string
 	defer func(rows *sql.Rows) {
 		err := rows.Close()
@@ -99,9 +113,7 @@ func GetUserRolesInGroup(groupId string, userId string, db *sql.DB) ([]string, e
 
 		}
 	}(rows)
-	if err != nil {
-		return userRoles, err
-	}
+
 	for rows.Next() {
 		var userRole string
 		err := rows.Scan(&userRole)
@@ -110,6 +122,7 @@ func GetUserRolesInGroup(groupId string, userId string, db *sql.DB) ([]string, e
 		}
 		userRoles = append(userRoles, userRole)
 	}
+
 	return userRoles, nil
 }
 
@@ -123,6 +136,13 @@ func GetUserRolesInGroupViaMealId(mealId string, userId string, db *sql.DB) ([]s
 	AND user_group_roles.user_id = $1
 `
 	rows, err := db.Query(query, userId, mealId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUserIsNotPartOfThisGroup
+		}
+		return nil, err
+	}
+
 	var userRoles []string
 	defer func(rows *sql.Rows) {
 		err := rows.Close()
@@ -130,12 +150,7 @@ func GetUserRolesInGroupViaMealId(mealId string, userId string, db *sql.DB) ([]s
 
 		}
 	}(rows)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return userRoles, ErrUserIsNotPartOfThisGroup
-		}
-		return userRoles, err
-	}
+
 	for rows.Next() {
 		var userRole string
 		err := rows.Scan(&userRole)

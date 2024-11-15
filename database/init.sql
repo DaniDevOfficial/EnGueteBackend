@@ -62,7 +62,9 @@ CREATE TABLE user_group_roles
     group_id            UUID        NOT NULL REFERENCES groups (group_id) ON DELETE CASCADE,
     role                VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'manager', 'member')),
 
-)
+
+    CONSTRAINT  unique_user_group_roles UNIQUE (user_groups_id, user_id, group_id, role)
+);
 
 
 -- Meals Table
@@ -88,7 +90,7 @@ CREATE TABLE meal_preferences
     user_id       UUID        NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
     preference    VARCHAR(20) NOT NULL CHECK (preference IN ('opt-in', 'opt-out', 'undecided', 'eat later')),
     changed_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
 
         CONSTRAINT unique_meal_preference UNIQUE (meal_id, user_id)
@@ -99,7 +101,7 @@ CREATE TABLE meal_cooks
 (
     meal_cook_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     meal_id      UUID NOT NULL REFERENCES meals (meal_id) ON DELETE CASCADE,
-    user_id      UUID NOT NULL REFERENCES users (user_id) ON DELETE CASCADE
+    user_id      UUID NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
 
         CONSTRAINT unique_meal_cook UNIQUE (meal_id, user_id)
 );
