@@ -233,6 +233,7 @@ func GetUserGroupsById(c *gin.Context, db *sql.DB) {
 // @Failure 401 {object} UserError "Invalid JWT token"
 // @Failure 500 {object} UserError "Server error deleting user"
 // @Router /users [delete]
+
 func DeleteUserWithJWT(c *gin.Context, db *sql.DB) {
 
 	decodedJWT, err := auth.GetJWTPayloadFromHeader(c)
@@ -385,6 +386,7 @@ func UpdateUserPassword(c *gin.Context, db *sql.DB) {
 	}
 	err = UpdatePasswordInDb(hashedPassword, jwtPayload.UserId, db)
 	if err != nil {
+		c.JSON(http.StatusInternalServerError, UserError{Error: "Error updating password"})
 		return
 	}
 

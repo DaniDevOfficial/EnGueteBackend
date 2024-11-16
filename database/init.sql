@@ -93,7 +93,7 @@ CREATE TABLE meal_preferences
     created_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
 
-        CONSTRAINT unique_meal_preference UNIQUE (meal_id, user_id)
+    CONSTRAINT unique_meal_preference UNIQUE (meal_id, user_id)
 );
 
 -- Meal_Cooks Table (Many-to-Many Relationship between Meals and Users)

@@ -72,6 +72,7 @@ func CreateNewMeal(c *gin.Context, db *sql.DB) {
 // @Failure 401 {object} MealError "Unauthorized user or insufficient permissions"
 // @Failure 500 {object} MealError "Internal server error"
 // @Router /meals/{mealId} [delete]
+
 func DeleteMeal(c *gin.Context, db *sql.DB) {
 	mealId := c.Param("mealId")
 	if mealId == "" {
@@ -244,7 +245,7 @@ func OptInMeal(c *gin.Context, db *sql.DB) {
 			c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
 		}
 	}
-
+  
 	err = OptInMealInDB(jwtPayload.UserId, requestOptInMeal, db)
 	if err != nil {
 		if errors.Is(err, ErrDataCouldNotBeUpdated) {
@@ -357,6 +358,7 @@ func AddCookToMeal(c *gin.Context, db *sql.DB) {
 
 	isSelfAdd := addCookToMealData.UserId == jwtPayload.UserId
 	isGroupMember, err := group.IsUserInGroupViaMealId(addCookToMealData.MealId, addCookToMealData.UserId, db)
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
@@ -375,6 +377,7 @@ func AddCookToMeal(c *gin.Context, db *sql.DB) {
 			c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
 		}
 	}
+
 
 	err = AddCookToMealInDB(addCookToMealData.UserId, addCookToMealData.UserId, db)
 	if err != nil {
@@ -419,6 +422,7 @@ func RemoveCookFromMeal(c *gin.Context, db *sql.DB) {
 
 	isSelfAction := removeCookFromMealData.UserId == jwtPayload.UserId
 	isGroupMember, err := group.IsUserInGroupViaMealId(removeCookFromMealData.MealId, removeCookFromMealData.UserId, db)
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
@@ -437,6 +441,7 @@ func RemoveCookFromMeal(c *gin.Context, db *sql.DB) {
 			c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
 		}
 	}
+
 
 	err = RemoveCookFromMealInDB(removeCookFromMealData.UserId, removeCookFromMealData.MealId, db)
 	if err != nil {

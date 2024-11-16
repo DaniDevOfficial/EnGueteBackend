@@ -109,7 +109,7 @@ func CreateUserInDB(userData DBNewUser, db *sql.DB) (string, error) {
 
 func UpdateUsernameInDB(newUsername string, userId string, db *sql.DB) error {
 	query := `	UPDATE users
-					username = $1
+				SET	username = $1
 				WHERE user_id = $2
 `
 	_, err := db.Exec(query, newUsername, userId)
@@ -118,7 +118,7 @@ func UpdateUsernameInDB(newUsername string, userId string, db *sql.DB) error {
 
 func UpdatePasswordInDb(newPassword string, userId string, db *sql.DB) error {
 	query := `	UPDATE users
-					password_hash = $1
+				SET password_hash = $1
 				WHERE user_id = $2
 `
 	_, err := db.Exec(query, newPassword, userId)
