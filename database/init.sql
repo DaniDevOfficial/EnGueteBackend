@@ -54,6 +54,19 @@ CREATE TABLE user_groups_blacklist
 
 );
 
+CREATE TABLE user_group_roles
+(
+    user_group_roles_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_groups_id      UUID        NOT NULL REFERENCES user_group (user_group_id) ON DELETE CASCADE,
+    user_id             UUID        NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
+    group_id            UUID        NOT NULL REFERENCES groups (group_id) ON DELETE CASCADE,
+    role                VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'manager', 'member')),
+
+
+    CONSTRAINT  unique_user_group_roles UNIQUE (user_groups_id, user_id, group_id, role)
+);
+
+
 -- Meals Table
 CREATE TABLE meals
 (
@@ -88,7 +101,7 @@ CREATE TABLE meal_cooks
 (
     meal_cook_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     meal_id      UUID NOT NULL REFERENCES meals (meal_id) ON DELETE CASCADE,
-    user_id      UUID NOT NULL REFERENCES users (user_id) ON DELETE CASCADE
+    user_id      UUID NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
 
         CONSTRAINT unique_meal_cook UNIQUE (meal_id, user_id)
 );

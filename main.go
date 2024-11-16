@@ -4,6 +4,7 @@ import (
 	_ "enguete/docs"
 	"enguete/modules/dev"
 	"enguete/modules/group"
+	"enguete/modules/management"
 	"enguete/modules/meal"
 	"enguete/modules/user"
 	"enguete/util/auth"
@@ -32,10 +33,11 @@ func main() {
 	router.GET("/documentation/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	router.Use(corsMiddleware())
+	dev.RegisterDevRoutes(router)
 	user.RegisterUserRoute(router, dbConnection)
-	dev.RegisterDevRoutes(router, dbConnection)
 	group.RegisterGroupRoute(router, dbConnection)
 	meal.RegisterMealRoute(router, dbConnection)
+	management.RegisterManagementRoute(router, dbConnection)
 	fmt.Println("🚀 Server is listening on http://localhost:8000/")
 	log.Fatal(router.Run("localhost:8000"))
 }

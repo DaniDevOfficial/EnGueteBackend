@@ -7,7 +7,12 @@ import (
 
 func InitCustomValidators() {
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		err := v.RegisterValidation("validDateTime", ValidDateTime)
+		err := v.RegisterValidation("dateTime", ValidDateTime)
+		if err != nil {
+			panic("Failed to register custom validator")
+			return
+		}
+		err = v.RegisterValidation("uuid", IsValidUUID)
 		if err != nil {
 			panic("Failed to register custom validator")
 			return
