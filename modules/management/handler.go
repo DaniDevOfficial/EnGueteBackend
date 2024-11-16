@@ -7,6 +7,7 @@ import (
 
 func RegisterManagementRoute(router *gin.Engine, db *sql.DB) {
 	registerUserManagementRoutes(router, db)
+	registerRoleManagementRoutes(router, db)
 }
 
 func registerUserManagementRoutes(router *gin.Engine, db *sql.DB) {
@@ -22,11 +23,10 @@ func registerUserManagementRoutes(router *gin.Engine, db *sql.DB) {
 }
 
 func registerRoleManagementRoutes(router *gin.Engine, db *sql.DB) {
-	//TODO: implement a feature for roles in a specific group
-	router.POST("management/roles", func(c *gin.Context) {
-
+	router.POST("management/roles/add", func(c *gin.Context) {
+		AddRoleToUser(c, db)
 	})
-	router.DELETE("management/roles", func(c *gin.Context) {
-
+	router.POST("management/roles/remove", func(c *gin.Context) {
+		RemoveRoleFromUser(c, db)
 	})
 }

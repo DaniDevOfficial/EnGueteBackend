@@ -24,8 +24,8 @@ const (
 	CanForceOptIn        = "can_force_opt_in"
 	CanSendNotifications = "can_send_notifications"
 
-	CanPromoteToAdmins   = "can_promote_to_admins"
-	CanDemoteFromAdmins  = "can_demote_from_admins"
+	CanPromoteToAdmins   = "can_promote_to_admin"
+	CanDemoteFromAdmins  = "can_demote_from_admin"
 	CanPromoteToManager  = "can_promote_to_manager"
 	CanDemoteFromManager = "can_demote_from_manager"
 )
@@ -76,6 +76,19 @@ func CanPerformAction(roles []string, action string) bool {
 	}
 	log.Println("Cannot perform action:", action, "with roles:", roles)
 	return false
+}
+
+func GetConstViaString(roleName string) string {
+	switch roleName {
+	case "admin":
+		return AdminRole
+	case "manager":
+		return ManagerRole
+	case "member":
+		return MemberRole
+	default:
+		return ""
+	}
 }
 
 func GetAllRoleRightsForARole(role string) []string {

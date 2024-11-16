@@ -13,14 +13,16 @@ import (
 	"strings"
 )
 
-// CreateNewUser @Summary Create a new user
-// @Description Create a new user in the system with password and username validation
+// CreateNewUser godoc
+// @Summary Create a new user
+// @Description Create a new user with password and username validation.
 // @Tags users
 // @Accept json
 // @Produce json
-// @Param user body user.RequestNewUser true "Request payload for creating a new user"
+// @Param user body RequestNewUser true "Request payload for creating a new user"
 // @Success 201 {object} jwt.JWTTokenResponse
-// @Failure 400 {object} user.UserError
+// @Failure 400 {object} UserError "Invalid request data or username already exists"
+// @Failure 500 {object} UserError "Server error creating user"
 // @Router /auth/signup [post]
 func CreateNewUser(c *gin.Context, db *sql.DB) {
 
@@ -93,14 +95,16 @@ func CreateNewUser(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusCreated, response)
 }
 
-// SignIn @Summary Sign in to account
-// @Description Sign in to a previously created account. Cheks for correct password and username
+// SignIn godoc
+// @Summary Sign in to an account
+// @Description Sign in to an account. Checks for valid username and password.
 // @Tags users
 // @Accept json
 // @Produce json
-// @Param user body user.RequestNewUser true "Request payload for sign in into an account"
-// @Success 201 {object} jwt.JWTTokenResponse
-// @Failure 400 {object} user.UserError
+// @Param user body SignInCredentials true "Sign-in credentials"
+// @Success 200 {object} jwt.JWTTokenResponse
+// @Failure 400 {object} UserError "Invalid username or password"
+// @Failure 500 {object} UserError "Server error during sign-in"
 // @Router /auth/signin [post]
 func SignIn(c *gin.Context, db *sql.DB) {
 
@@ -139,17 +143,18 @@ func SignIn(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, response)
 }
 
-// GetUserById @Summary Get a user by his id
-// @Description Get a user by his id or return an error
+// GetUserById godoc
+// @Summary Get a user by ID
+// @Description Fetch user details by ID.
 // @Tags users
 // @Accept json
 // @Produce json
-// @Param user body string true "UUID"
-// @Success 201 {object} user.ResponseUserData
-// @Failure 400 {object} user.UserError
-// @Failure 404 {object} user.UserError
-// @Failure 500 {object} user.UserError
-// @Router /users/:id [get]
+// @Param id path string true "User ID"
+// @Success 200 {object} ResponseUserData
+// @Failure 400 {object} UserError "Invalid user ID"
+// @Failure 404 {object} UserError "User not found"
+// @Failure 500 {object} UserError "Server error retrieving user"
+// @Router /users/{id} [get]
 func GetUserById(c *gin.Context, db *sql.DB) {
 
 	userId := c.Param("id")
@@ -178,17 +183,18 @@ func GetUserById(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, response)
 }
 
-// GetUserGroupsById @Summary Get a users groups his in, by his id
-// @Description Get a users groups he's in by his id or return an error
+// GetUserGroupsById godoc
+// @Summary Get a user's groups by ID
+// @Description Fetch all groups that a user belongs to by their ID.
 // @Tags users
 // @Accept json
 // @Produce json
-// @Param user body string true "UUID"
-// @Success 201 {object} user.ResponseUserGroups
-// @Failure 400 {object} user.UserError
-// @Failure 404 {object} user.UserError
-// @Failure 500 {object} user.UserError
-// @Router /users/:id/groups [get]
+// @Param id path string true "User ID"
+// @Success 200 {object} ResponseUserGroups
+// @Failure 400 {object} UserError "Invalid user ID"
+// @Failure 404 {object} UserError "User not found"
+// @Failure 500 {object} UserError "Server error retrieving user groups"
+// @Router /users/{id}/groups [get]
 func GetUserGroupsById(c *gin.Context, db *sql.DB) {
 
 	userId := c.Param("id")
@@ -216,16 +222,17 @@ func GetUserGroupsById(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, response)
 }
 
-// DeleteUserWithJWT @Summary Delete a user
-// @Description Delete a user with his jwt token
+// DeleteUserWithJWT godoc
+// @Summary Delete a user
+// @Description Delete a user based on JWT token.
 // @Tags users
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "JWT Token"
-// @Success 201 {object} user.UserSuccess
-// @Failure 401 {object} user.UserError
-// @Failure 500 {object} user.UserError
-// @Router /users/:uuid [delete]
+// @Success 200 {object} UserSuccess "User successfully deleted"
+// @Failure 401 {object} UserError "Invalid JWT token"
+// @Failure 500 {object} UserError "Server error deleting user"
+// @Router /users [delete]
 func DeleteUserWithJWT(c *gin.Context, db *sql.DB) {
 
 	decodedJWT, err := auth.GetJWTPayloadFromHeader(c)
@@ -252,16 +259,18 @@ func DeleteUserWithJWT(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, successResponse)
 }
 
-// UpdateUsername @Summary Update a users username
-// @Description Update a users username with his jwt token
+// UpdateUsername godoc
+// @Summary Update a user's username
+// @Description Update a user's username using their JWT token.
 // @Tags users
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "JWT Token"
-// @Param user body user.RequestChangeUsername true "Request payload for changing username"
-// @Success 201 {object} user.UserSuccess
-// @Failure 400 {object} user.UserError
-// @Router /users/username [post]
+// @Param user body RequestChangeUsername true "Username update payload"
+// @Success 200 {object} UserSuccess "Username updated successfully"
+// @Failure 400 {object} UserError "Invalid username or already in use"
+// @Failure 500 {object} UserError "Server error updating username"
+// @Router /users/username [put]
 func UpdateUsername(c *gin.Context, db *sql.DB) {
 	var changeUsernameData RequestChangeUsername
 
@@ -301,16 +310,18 @@ func UpdateUsername(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, successMessage)
 }
 
-// UpdateUserPassword @Summary Update a users username
-// @Description Update a users username with his jwt token
+// UpdateUserPassword godoc
+// @Summary Update a user's password
+// @Description Update a user's password using their JWT token.
 // @Tags users
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "JWT Token"
-// @Param user body user.RequestChangePassword true "Request payload for Changing password"
-// @Success 201 {object} user.UserSuccess
-// @Failure 400 {object} user.UserError
-// @Router /users/password [post]
+// @Param user body RequestChangePassword true "Password update payload"
+// @Success 200 {object} UserSuccess "Password updated successfully"
+// @Failure 400 {object} UserError "Invalid password"
+// @Failure 500 {object} UserError "Server error updating password"
+// @Router /users/password [put]
 func UpdateUserPassword(c *gin.Context, db *sql.DB) {
 	var updatePasswordData RequestChangePassword
 	if err := c.ShouldBindJSON(&updatePasswordData); err != nil {

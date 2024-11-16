@@ -48,6 +48,24 @@ func AddRoleToUserInGroupWithTransaction(groupId string, userId string, role str
 	return err
 }
 
+func AddRoleToUserInGroup(groupId string, userId string, role string, db *sql.DB) error {
+	query := `INSERT INTO user_group_roles (group_id, user_id, role) VALUES ($1, $2, $3)`
+	_, err := db.Exec(query, groupId, userId, role)
+	return err
+}
+
+var ErrNothingHappened = errors.New("nothing happened")
+
+func RemoveRoleFromUserInGroup(groupId string, userId string, role string, db *sql.DB) error {
+	query := `DELETE FROM user_group_roles WHERE group_id = $1 AND user_id = $2 AND role = $3 RETURNING group_id`
+	var groupIdTmp string
+	err := db.QueryRow(query, groupId, userId, role).Scan(&groupIdTmp)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNothingHappened
+	}
+	return err
+}
+
 var ErrUserIsNotPartOfThisGroup = errors.New("user is not part of this group")
 
 func IsUserMemberOfGroupViaMealId(mealId string, userId string, db *sql.DB) (int, error) {

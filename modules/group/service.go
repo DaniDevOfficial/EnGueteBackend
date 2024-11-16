@@ -11,16 +11,19 @@ import (
 	"net/http"
 )
 
-// CreateNewGroup @Summary Create a new group
-// @Description Create a new Group and put the requesters id as the creators id
-// @Tags groups
+// CreateNewGroup godoc
+// @Summary Create a new group
+// @Description Creates a new group and assigns the requester as the group creator with admin and member roles.
+// @Tags Groups
 // @Accept json
 // @Produce json
-// @Param group body group.RequestNewGroup true "Request payload for a new group"
-// @Success 201 {object} group.ResponseNewGroup
-// @Failure 400 {object} group.GroupError
-// @Failure 404 {object} group.GroupError
-// @Failure 500 {object} group.GroupError
+// @Param Authorization header string true "Bearer token for authorization"
+// @Param group body RequestNewGroup true "Request payload for creating a new group"
+// @Success 201 {object} ResponseNewGroup "Group successfully created"
+// @Failure 400 {object} GroupError "Bad request - error decoding request"
+// @Failure 401 {object} GroupError "Unauthorized - invalid authorization token"
+// @Failure 404 {object} GroupError "Not Found - resource not found"
+// @Failure 500 {object} GroupError "Internal server error - error during group creation or transaction handling"
 // @Router /groups [post]
 func CreateNewGroup(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
@@ -110,17 +113,18 @@ func GetGroupById(c *gin.Context, db *sql.DB) { // TODO: this will be implemente
 	log.Println(jwtPayload.UserId)
 }
 
-// GenerateInviteLink @Summary Generate an invite link for a group
+// GenerateInviteLink godoc
+// @Summary Generate an invite link for a group
 // @Description Generates a unique invite link for a specified group. Only users with admin or owner roles can generate an invitation link.
-// @Tags groups
+// @Tags Groups
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer token for authorization"
 // @Param inviteRequest body InviteLinkGenerationRequest true "Group ID and optional expiration settings for invite link generation"
-// @Success 201 {object} InviteLinkGenerationResponse
-// @Failure 400 {object} group.GroupError "Bad request - error decoding request"
-// @Failure 401 {object} group.GroupError "Unauthorized - authorization is not valid or user lacks permissions"
-// @Failure 500 {object} group.GroupError "Internal server error - issues with invite creation or transaction handling"
+// @Success 201 {object} InviteLinkGenerationResponse "Invite link successfully created"
+// @Failure 400 {object} GroupError "Bad request - error decoding request"
+// @Failure 401 {object} GroupError "Unauthorized - invalid authorization or insufficient permissions"
+// @Failure 500 {object} GroupError "Internal server error - issues with invite creation or transaction handling"
 // @Router /groups/invite [post]
 func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
@@ -190,10 +194,10 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 	})
 }
 
-// JoinGroupWithInviteToken handles joining a group via an invite token.
+// JoinGroupWithInviteToken godoc
 // @Summary Join a group using an invite token
 // @Description Allows a user to join a specified group by validating an invite token. The user must have a valid token and necessary permissions.
-// @Tags groups
+// @Tags Groups
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer token for authorization"
@@ -203,7 +207,7 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 // @Failure 401 {object} GroupError "Unauthorized - invalid invite token or lack of permissions"
 // @Failure 404 {object} GroupError "Not Found - user not found"
 // @Failure 500 {object} GroupError "Internal server error - error adding user to group"
-// @Router /groups/invite/join/:inviteToken [post]
+// @Router /groups/invite/join/{inviteToken} [post]
 func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
 	if err != nil {
@@ -270,19 +274,19 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, GroupSuccess{Message: "User added to group"})
 }
 
-// VoidInviteToken handles deleting an invite token.
-// @Summary Delete an invite token.
-// @Description Allows a user to delete an invite token. The user must have a valid token and necessary permissions.
-// @Tags groups
+// VoidInviteToken godoc
+// @Summary Delete an invite token
+// @Description Allows a user to delete an invite token. The user must have a valid token and the necessary permissions.
+// @Tags Groups
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer token for authorization"
-// @Param inviteToken path string true "Invite token for deleting it"
+// @Param inviteToken path string true "Invite token to be deleted"
 // @Success 200 {object} GroupSuccess "Successfully deleted the token"
 // @Failure 400 {object} GroupError "Bad request - error decoding request"
 // @Failure 401 {object} GroupError "Unauthorized - invalid invite token or lack of permissions"
 // @Failure 500 {object} GroupError "Internal server error - error deleting invite token"
-// @Router /groups/invite/join/:inviteToken [post]
+// @Router /groups/invite/join/{inviteToken} [delete]
 func VoidInviteToken(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
 	if err != nil {
@@ -324,18 +328,18 @@ func VoidInviteToken(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, GroupSuccess{Message: "Invite token deleted"})
 }
 
-// LeaveGroup handles a user leaving a group.
-// @Summary Leave a group.
-// @Description Allows a user to leave a group. The user must have a valid token and necessary permissions.
-// @Tags groups
+// LeaveGroup godoc
+// @Summary Leave a group
+// @Description Allows a user to leave a specified group. If the user is the last member or the last admin, additional handling is performed (e.g., delete the group or assign a new admin).
+// @Tags Groups
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer token for authorization"
-// @Param groupId path string true "Group ID for leaving the group"
+// @Param groupId path string true "Group ID"
 // @Success 200 {object} GroupSuccess "User successfully left the group"
-// @Failure 400 {object} GroupError "Bad request - error decoding request"
-// @Failure 401 {object} GroupError "Unauthorized - invalid group id or lack of permissions"
-// @Failure 500 {object} GroupError "Internal server error - error leaving group"
+// @Failure 400 {object} GroupError "User is not in the group or the group does not exist"
+// @Failure 401 {object} GroupError "Authorization is not valid"
+// @Failure 500 {object} GroupError "Error leaving group"
 // @Router /groups/leave/{groupId} [delete]
 func LeaveGroup(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
