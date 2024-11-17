@@ -34,7 +34,6 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 
 	var newGroupData RequestNewGroup
 	if err := c.ShouldBindJSON(&newGroupData); err != nil {
-		log.Println(err)
 		errorMessage := GroupError{
 			Error: "Error decoding request",
 		}

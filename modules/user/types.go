@@ -22,12 +22,20 @@ type RequestChangePassword struct {
 }
 
 type ResponseUserGroups struct {
-	Groups []UserGroupsFromDB `json:"userGroups" `
+	Groups []GroupCard `json:"userGroups" `
 }
 
 type ResponseUserData struct {
-	Username string `json:"username"`
-	UserID   string `json:"userId"`
+	Username string      `json:"username"`
+	UserID   string      `json:"userId"`
+	Groups   []GroupCard `json:"groups"`
+}
+
+type GroupCard struct {
+	GroupName             string `json:"groupName"`
+	GroupId               string `json:"groupId"`
+	AmountOfPeopleInGroup int    `json:"amountOfPeopleInGroup"`
+	NextMealDate          string `json:"nextMealDate"`
 }
 
 type DBNewUser struct {

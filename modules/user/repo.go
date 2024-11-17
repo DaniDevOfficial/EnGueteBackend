@@ -50,7 +50,7 @@ func GetUserByIdFromDB(userId string, db *sql.DB) (UserFromDB, error) {
 	return userData, err
 }
 
-func GetUsersGroupByUserIdFromDB(userId string, db *sql.DB) ([]UserGroupsFromDB, error) {
+func GetUsersGroupByUserIdFromDB(userId string, db *sql.DB) ([]GroupCard, error) {
 
 	query := `SELECT
     			g.group_id,
@@ -67,7 +67,7 @@ func GetUsersGroupByUserIdFromDB(userId string, db *sql.DB) ([]UserGroupsFromDB,
     		WHERE 
         		u.user_id = $1`
 	rows, err := db.Query(query, userId)
-	var userGroups []UserGroupsFromDB
+	var userGroups []GroupCard
 	defer func(rows *sql.Rows) {
 		err := rows.Close()
 		if err != nil {
@@ -79,11 +79,12 @@ func GetUsersGroupByUserIdFromDB(userId string, db *sql.DB) ([]UserGroupsFromDB,
 	}
 
 	for rows.Next() {
-		var thisUserGroup UserGroupsFromDB
-		err := rows.Scan(&thisUserGroup.groupId, &thisUserGroup.groupName, &thisUserGroup.userCount)
+		var thisUserGroup GroupCard
+		err := rows.Scan(&thisUserGroup.GroupId, &thisUserGroup.GroupName, &thisUserGroup.AmountOfPeopleInGroup)
 		if err != nil {
 			return userGroups, err
 		}
+		thisUserGroup.NextMealDate = "123"
 		userGroups = append(userGroups, thisUserGroup)
 	}
 

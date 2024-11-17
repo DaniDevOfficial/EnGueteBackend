@@ -7,7 +7,7 @@ import (
 )
 
 func GetJWTTokenFromHeader(c *gin.Context) (string, error) {
-	jwtString := c.Request.Header.Get("bearer")
+	jwtString := c.Request.Header.Get("Authorization")
 	if jwtString == "" {
 		return "", fmt.Errorf("missing authorization header")
 	}

@@ -2,6 +2,7 @@ package validation
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 )
 
@@ -13,7 +14,7 @@ func IsValidPassword(password string) (bool, error) {
 	if len(password) < minLength {
 		return false, fmt.Errorf("The Password needs to be at least " + strconv.Itoa(minLength) + " letters long")
 	}
-
+	log.Println(password)
 	if !checkForCharacters(password) {
 		return false, fmt.Errorf("password needs Upper, lower and special characters and at least one number")
 	}
@@ -36,10 +37,14 @@ func checkForCharacters(password string) bool {
 			hasLower = true
 		} else if !hasDigit && ascii >= 48 && ascii <= 57 {
 			hasDigit = true
-		} else {
+		} else if !hasSpecial && ((ascii >= 33 && ascii <= 47) || (ascii >= 58 && ascii <= 64) || (ascii >= 91 && ascii <= 96) || (ascii >= 123 && ascii <= 126)) {
 			hasSpecial = true
 		}
+		if hasUpper && hasLower && hasDigit && hasSpecial {
+			break
+		}
 	}
-
+	fmt.Printf("Upper: %v, Lower: %v, Digit: %v, Special: %v\n", hasUpper, hasLower, hasDigit, hasSpecial)
+	log.Println(hasUpper, hasLower, hasDigit, hasSpecial)
 	return hasUpper && hasLower && hasDigit && hasSpecial
 }
