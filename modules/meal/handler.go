@@ -22,10 +22,10 @@ func registerMealRoutes(router *gin.Engine, db *sql.DB) {
 	router.DELETE("/meals/:mealId", func(c *gin.Context) {
 		DeleteMeal(c, db)
 	})
-	router.POST("/meals/manage/open/", func(c *gin.Context) {
+	router.POST("/meals/open/", func(c *gin.Context) {
 		ChangeMealClosedFlag(c, db)
 	})
-	router.POST("/meals/manage/fulfilled", func(c *gin.Context) {
+	router.POST("/meals/fulfilled", func(c *gin.Context) {
 		ChangeMealFulfilledFlag(c, db)
 	})
 
