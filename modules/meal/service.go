@@ -245,7 +245,7 @@ func OptInMeal(c *gin.Context, db *sql.DB) {
 			c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
 		}
 	}
-  
+
 	err = OptInMealInDB(jwtPayload.UserId, requestOptInMeal, db)
 	if err != nil {
 		if errors.Is(err, ErrDataCouldNotBeUpdated) {
@@ -378,7 +378,6 @@ func AddCookToMeal(c *gin.Context, db *sql.DB) {
 		}
 	}
 
-
 	err = AddCookToMealInDB(addCookToMealData.UserId, addCookToMealData.UserId, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
@@ -441,7 +440,6 @@ func RemoveCookFromMeal(c *gin.Context, db *sql.DB) {
 			c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
 		}
 	}
-
 
 	err = RemoveCookFromMealInDB(removeCookFromMealData.UserId, removeCookFromMealData.MealId, db)
 	if err != nil {

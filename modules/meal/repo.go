@@ -28,9 +28,26 @@ func DeleteMealInDB(mealId string, db *sql.DB) error {
 	return err
 }
 
+func GetMealsInGroupDB(groupId string, userId string, db *sql.DB) {
+	query := `
+		SELECT 
+			m.meal_id,
+			m.title,
+			m.closed,
+			m.fullfilled,
+			m.date_time,
+			m.type
+		
+		FROM meals m
+		LEFT JOIN meal_preferences mp on mp.meal_id = m.meal_id
+		WHERE m.group_id = $1
+`
+}
+
 var ErrUserAlreadyHasAPreferenceInSpecificMeal = errors.New("user already has A Preference")
 
 // Flags
+
 func UpdateClosedBoolInDB(mealId string, isClosed bool, db *sql.DB) error {
 	query := `UPDATE meals SET closed=$1 WHERE meal_id=$2 RETURNING closed` // TODO Swap the closed bool from what it currently is
 	var tmp bool

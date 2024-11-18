@@ -53,6 +53,7 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 	newGroupId, err := CreateNewGroupInDBWithTransaction(newGroupData, jwtPayload.UserId, tx)
 	if err != nil {
 		_ = tx.Rollback()
+		log.Println(err)
 		errorMessage := GroupError{
 			Error: "Error Creating Group",
 		}
@@ -60,7 +61,10 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = AddUserToGroupWithTransaction(newGroupId, jwtPayload.UserId, tx)
+	userGroupId, err := AddUserToGroupWithTransaction(newGroupId, jwtPayload.UserId, tx)
+	if err != nil {
+		return
+	}
 	if err != nil {
 		_ = tx.Rollback()
 		errorMessage := GroupError{
@@ -70,17 +74,18 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = AddRoleToUserInGroupWithTransaction(newGroupId, jwtPayload.UserId, roles.AdminRole, tx)
+	err = AddRoleToUserInGroupWithTransaction(newGroupId, jwtPayload.UserId, roles.AdminRole, userGroupId, tx)
 	if err != nil {
+		log.Println(err)
 		_ = tx.Rollback()
-		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Group"})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Group1"})
 		return
 	}
 
-	err = AddRoleToUserInGroupWithTransaction(newGroupId, jwtPayload.UserId, roles.MemberRole, tx)
+	err = AddRoleToUserInGroupWithTransaction(newGroupId, jwtPayload.UserId, roles.MemberRole, userGroupId, tx)
 	if err != nil {
 		_ = tx.Rollback()
-		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Group"})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Group2"})
 		return
 	}
 
@@ -107,9 +112,7 @@ func GetGroupById(c *gin.Context, db *sql.DB) { // TODO: this will be implemente
 		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
 	}
 	groupId := c.Param("groupId")
-	// DO this later
-	log.Println(groupId)
-	log.Println(jwtPayload.UserId)
+
 }
 
 // GenerateInviteLink godoc
@@ -243,7 +246,10 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
 	}
 
-	err = AddUserToGroupWithTransaction(groupId, jwtPayload.UserId, tx)
+	userGroupId, err := AddUserToGroupWithTransaction(groupId, jwtPayload.UserId, tx)
+	if err != nil {
+		return
+	}
 	if err != nil {
 		_ = tx.Rollback()
 		errorMessage := GroupError{
@@ -253,7 +259,7 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = AddRoleToUserInGroupWithTransaction(groupId, jwtPayload.UserId, roles.MemberRole, tx)
+	err = AddRoleToUserInGroupWithTransaction(groupId, jwtPayload.UserId, roles.MemberRole, userGroupId, tx)
 	if err != nil {
 		_ = tx.Rollback()
 		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Group"})

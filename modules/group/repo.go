@@ -36,15 +36,16 @@ func AddUserToGroupInDB(groupId string, userId string, db *sql.DB) (bool, error)
 	return result, err
 }
 
-func AddUserToGroupWithTransaction(groupId string, userId string, tx *sql.Tx) error {
-	query := `INSERT INTO user_groups (group_id, user_id) VALUES ($1, $2)`
-	_, err := tx.Exec(query, groupId, userId)
-	return err
+func AddUserToGroupWithTransaction(groupId string, userId string, tx *sql.Tx) (string, error) {
+	query := `INSERT INTO user_groups (group_id, user_id) VALUES ($1, $2) RETURNING user_group_id`
+	var userGroupId string
+	err := tx.QueryRow(query, groupId, userId).Scan(&userGroupId)
+	return userGroupId, err
 }
 
-func AddRoleToUserInGroupWithTransaction(groupId string, userId string, role string, tx *sql.Tx) error {
-	query := `INSERT INTO user_group_roles (group_id, user_id, role) VALUES ($1, $2, $3)`
-	_, err := tx.Exec(query, groupId, userId, role)
+func AddRoleToUserInGroupWithTransaction(groupId string, userId string, role string, userGroupId string, tx *sql.Tx) error {
+	query := `INSERT INTO user_group_roles (group_id, user_id, role, user_groups_id) VALUES ($1, $2, $3, $4)`
+	_, err := tx.Exec(query, groupId, userId, role, userGroupId)
 	return err
 }
 
