@@ -1,5 +1,7 @@
 package group
 
+import "enguete/modules/meal"
+
 type GroupError struct {
 	Error string `json:"error"`
 }
@@ -23,4 +25,15 @@ type InviteLinkGenerationResponse struct {
 
 type ResponseNewGroup struct {
 	GroupId string `json:"groupId"`
+}
+
+type GroupInfo struct {
+	GroupName string   `json:"groupName"`
+	UserCount int      `json:"userCount"`
+	UserRoles []string `json:"userRoles"`
+}
+
+type Group struct {
+	GroupInfo  GroupInfo       `json:"groupInfo"`
+	GroupMeals []meal.MealCard `json:"meals"`
 }

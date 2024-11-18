@@ -2,6 +2,7 @@ package group
 
 import (
 	"database/sql"
+	"enguete/modules/meal"
 	"enguete/modules/user"
 	"enguete/util/auth"
 	"enguete/util/roles"
@@ -103,16 +104,51 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 	})
 }
 
-func GetGroupById(c *gin.Context, db *sql.DB) { // TODO: this will be implemented later
+// GetGroupById godoc
+// @Summary Retrieve group information
+// @Description Fetches detailed information about a specific group, including group metadata and associated meals.
+// @Tags Groups
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Bearer token for authorization"
+// @Param groupId path string true "Group ID to fetch information for"
+// @Success 200 {object} Group "Group information retrieved successfully"
+// @Failure 400 {object} GroupError "Bad request - invalid group ID or request format"
+// @Failure 401 {object} GroupError "Unauthorized - invalid authorization token"
+// @Failure 403 {object} GroupError "Forbidden - user is not a member of the group"
+// @Failure 404 {object} GroupError "Not Found - group not found"
+// @Failure 500 {object} GroupError "Internal server error - database error or failure in retrieving group data"
+// @Router /groups/{groupId} [get]
+func GetGroupById(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
 	if err != nil {
 		errorMessage := GroupError{
-			Error: "Authorisation is not valid",
+			Error: "Authorization is not valid",
 		}
 		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
+		return
 	}
+
 	groupId := c.Param("groupId")
 
+	// TODO: ONLY ALLOWED IF USER IS IN GROUP
+	groupInformation, err := GetGroupInformationFromDb(groupId, jwtPayload.UserId, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server error"})
+		return
+	}
+
+	mealCards, err := meal.GetMealsInGroupDB(groupId, jwtPayload.UserId, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server Error"})
+		return
+	}
+
+	response := Group{
+		GroupInfo:  groupInformation,
+		GroupMeals: mealCards,
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 // GenerateInviteLink godoc

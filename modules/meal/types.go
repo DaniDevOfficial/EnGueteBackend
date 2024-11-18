@@ -61,3 +61,16 @@ type RequestRemoveCook struct {
 type ResponseNewMeal struct {
 	MealId string `json:"mealId"`
 }
+
+type MealCard struct {
+	MealID           string `json:"mealId"`
+	Title            string `json:"title"`
+	Closed           bool   `json:"closed"`
+	Fulfilled        bool   `json:"fulfilled"`
+	DateTime         string `json:"dateTime"`
+	MealType         string `json:"mealType"`
+	Notes            string `json:"notes"`
+	ParticipantCount int    `json:"participantCount"`
+	UserPreference   string `json:"userPreference"`
+	IsCook           bool   `json:"isCook"`
+}

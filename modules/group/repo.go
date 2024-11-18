@@ -55,6 +55,24 @@ func AddRoleToUserInGroup(groupId string, userId string, role string, db *sql.DB
 	return err
 }
 
+func GetGroupInformationFromDb(groupId string, userId string, db *sql.DB) (GroupInfo, error) {
+	query := `
+	SELECT
+	    g.group_name,
+		COUNT(ug.user_id) AS user_count,
+	    ARRAY_AGG(ur.role) AS user_roles
+	FROM groups g 
+	LEFT JOIN user_groups ug ON ug.group_id = g.group_id
+	LEFT JOIN user_group_roles ur ON ur.group_id = g.group_id AND ur.user_id = $2
+	WHERE g.group_id = $1
+	GROUP BY g.group_id
+`
+
+	var info GroupInfo
+	if err := db.QueryRow(query, groupId, userId).Scan(&info.GroupName, &info.UserCount, &info.UserRoles); err != nil {
+		return info, err
+}
+
 var ErrNothingHappened = errors.New("nothing happened")
 
 func RemoveRoleFromUserInGroup(groupId string, userId string, role string, db *sql.DB) error {
