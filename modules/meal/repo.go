@@ -85,6 +85,86 @@ func GetMealsInGroupDB(groupId string, userId string, db *sql.DB) ([]MealCard, e
 
 }
 
+func GetSingularMealInformation(mealId string, userId string, db *sql.DB) (MealInformation, error) {
+	query := `
+        SELECT 
+            m.meal_id,
+            m.title,
+            m.closed,
+            m.fulfilled,
+            m.date_time,
+            m.meal_type,
+            m.notes,
+            COUNT(CASE WHEN mp.preference = 'opt-in' OR mp.preference = 'eat later' THEN 1 END) AS participant_count,
+            CASE WHEN mc.user_id IS NOT NULL THEN true ELSE false END AS is_cook
+        FROM meals m
+        LEFT JOIN meal_preferences mp ON mp.meal_id = m.meal_id
+        WHERE m.meal_id = $1
+        GROUP BY m.meal_id, mc.user_id
+        ORDER BY m.date_time
+`
+	var mealInformation MealInformation
+	err := db.QueryRow(query, mealId, userId).Scan(
+		&mealInformation.MealID,
+		&mealInformation.Title,
+		&mealInformation.Closed,
+		&mealInformation.Fulfilled,
+		&mealInformation.DateTime,
+		&mealInformation.MealType,
+		&mealInformation.Notes,
+		&mealInformation.ParticipantCount,
+		&mealInformation.IsCook,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return mealInformation, ErrNoData
+		}
+		return mealInformation, err
+	}
+
+	return mealInformation, nil
+}
+
+func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealParticipant, error) {
+	query := `
+		SELECT 
+    		u.username,
+    		u.user_id,
+    		COALESCE(mp.preference, 'undecided') AS preference,
+    		CASE
+        		WHEN mc.user_id IS NOT NULL THEN TRUE
+        		ELSE FALSE
+    		END AS is_cook
+		FROM users u
+		LEFT JOIN meal_preferences mp ON u.user_id = mp.user_id AND mp.meal_id = $1 AND mp.preference = 'opt-in'
+		LEFT JOIN meal_cooks mc ON u.user_id = mc.user_id AND mc.meal_id = $1
+		WHERE mp.meal_id = $1 OR mc.meal_id = $1;
+`
+	rows, err := db.Query(query, mealId)
+	var mealParticipants []MealParticipant
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return mealParticipants, nil
+		}
+		return mealParticipants, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var mealParticipant MealParticipant
+		err := rows.Scan(
+			&mealParticipant.Username,
+			&mealParticipant.UserId,
+			&mealParticipant.Preference,
+			&mealParticipant.IsCook,
+		)
+		if err != nil {
+			return mealParticipants, err
+		}
+	}
+	return mealParticipants, nil
+}
+
 var ErrUserAlreadyHasAPreferenceInSpecificMeal = errors.New("user already has A Preference")
 
 // Flags

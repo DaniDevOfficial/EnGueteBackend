@@ -59,6 +59,46 @@ func CreateNewMeal(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusCreated, ResponseNewMeal{MealId: mealId})
 }
 
+func GetMealById(c *gin.Context, db *sql.DB) {
+	mealId := c.Param("mealId")
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		return
+	}
+
+	isGroupMember, err := group.IsUserInGroupViaMealId(mealId, jwtPayload.UserId, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+	if !isGroupMember {
+		c.JSON(http.StatusNotFound, MealError{Error: "Group Not found"})
+	}
+
+	mealInformation, err := GetSingularMealInformation(mealId, jwtPayload.UserId, db)
+	if err != nil {
+		if errors.Is(err, ErrNoData) {
+			c.JSON(http.StatusNotFound, MealError{Error: "Meal Not found"})
+		}
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+
+	participationInformation, err := GetMealParticipationInformationFromDB(mealId, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+
+	meal := Meal{
+		MealInformation:            mealInformation,
+		MealParticipantInformation: participationInformation,
+	}
+	c.JSON(http.StatusOK, meal)
+}
+
 // DeleteMeal godoc
 // @Summary Delete a meal
 // @Description Deletes a meal within a specified group. The requesting user must be an admin or owner of the group to perform this action.
@@ -72,7 +112,6 @@ func CreateNewMeal(c *gin.Context, db *sql.DB) {
 // @Failure 401 {object} MealError "Unauthorized user or insufficient permissions"
 // @Failure 500 {object} MealError "Internal server error"
 // @Router /meals/{mealId} [delete]
-
 func DeleteMeal(c *gin.Context, db *sql.DB) {
 	mealId := c.Param("mealId")
 	if mealId == "" {

@@ -74,3 +74,27 @@ type MealCard struct {
 	UserPreference   string `json:"userPreference"`
 	IsCook           bool   `json:"isCook"`
 }
+
+type MealInformation struct {
+	MealID           string `json:"mealId"`
+	Title            string `json:"title"`
+	Closed           bool   `json:"closed"`
+	Fulfilled        bool   `json:"fulfilled"`
+	DateTime         string `json:"dateTime"`
+	MealType         string `json:"mealType"`
+	Notes            string `json:"notes"`
+	ParticipantCount int    `json:"participantCount"`
+	IsCook           bool   `json:"isCook"`
+}
+
+type MealParticipant struct {
+	Username   string `json:"username"`
+	UserId     string `json:"userId"`
+	Preference string `json:"preference"`
+	IsCook     bool   `json:"isCook"`
+}
+
+type Meal struct {
+	MealInformation            MealInformation   `json:"mealInformation"`
+	MealParticipantInformation []MealParticipant `json:"mealParticipant"`
+}
