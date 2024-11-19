@@ -154,10 +154,10 @@ func SignIn(c *gin.Context, db *sql.DB) {
 // @Failure 400 {object} UserError "Invalid user ID"
 // @Failure 404 {object} UserError "User not found"
 // @Failure 500 {object} UserError "Server error retrieving user"
-// @Router /users/{id} [get]
+// @Router /users/{userId} [get]
 func GetUserInformationById(c *gin.Context, db *sql.DB) {
 
-	userId := c.Param("id")
+	userId := c.Param("userId")
 	userId = strings.Trim(userId, " ")
 	if userId == "" {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "No userId attatched"})
@@ -200,10 +200,10 @@ func GetUserInformationById(c *gin.Context, db *sql.DB) {
 // @Failure 400 {object} UserError "Invalid user ID"
 // @Failure 404 {object} UserError "User not found"
 // @Failure 500 {object} UserError "Server error retrieving user groups"
-// @Router /users/{id}/groups [get]
+// @Router /users/{userId}/groups [get]
 func GetUserGroupsById(c *gin.Context, db *sql.DB) {
 
-	userId := c.Param("id")
+	userId := c.Param("userId")
 	userId = strings.Trim(userId, " ")
 	if userId == "" {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "No userId attatched"})

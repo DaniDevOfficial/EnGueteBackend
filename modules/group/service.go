@@ -122,16 +122,22 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 func GetGroupById(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
 	if err != nil {
-		errorMessage := GroupError{
-			Error: "Authorization is not valid",
-		}
-		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
+		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Authorization is not valid"})
 		return
 	}
 
 	groupId := c.Param("groupId")
 
-	// TODO: ONLY ALLOWED IF USER IS IN GROUP
+	inDB, err := IsUserInGroup(groupId, jwtPayload.UserId, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server error"})
+		return
+	}
+	if !inDB {
+		c.JSON(http.StatusUnauthorized, GroupError{Error: "Group Not Found"})
+		return
+	}
+
 	groupInformation, err := GetGroupInformationFromDb(groupId, jwtPayload.UserId, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server error"})
@@ -149,6 +155,48 @@ func GetGroupById(c *gin.Context, db *sql.DB) {
 		GroupMeals: mealCards,
 	}
 	c.JSON(http.StatusOK, response)
+}
+
+// GetGroupMembers godoc
+// @Summary Retrieve group members
+// @Description Fetches a list of members for a specific group, ensuring the user is authorized and a member of the group.
+// @Tags Groups
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Bearer token for authorization"
+// @Param groupId path string true "Group ID to fetch members for"
+// @Success 200 {array} Member "List of group members retrieved successfully"
+// @Failure 400 {object} GroupError "Bad request - invalid group ID or request format"
+// @Failure 401 {object} GroupError "Unauthorized - invalid authorization token"
+// @Failure 403 {object} GroupError "Forbidden - user is not a member of the group"
+// @Failure 404 {object} GroupError "Not Found - group not found"
+// @Failure 500 {object} GroupError "Internal server error - database error or failure in retrieving group members"
+// @Router /groups/{groupId}/members [get]
+func GetGroupMembers(c *gin.Context, db *sql.DB) {
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Authorization is not valid"})
+		return
+	}
+
+	groupId := c.Param("groupId")
+	inGroup, err := IsUserInGroup(groupId, jwtPayload.UserId, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server error"})
+		return
+	}
+	if !inGroup {
+		c.JSON(http.StatusUnauthorized, GroupError{Error: "Group Not Found"})
+		return
+	}
+
+	members, err := GetGroupMembersFromDb(groupId, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, members)
 }
 
 // GenerateInviteLink godoc

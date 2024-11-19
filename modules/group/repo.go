@@ -71,6 +71,43 @@ func GetGroupInformationFromDb(groupId string, userId string, db *sql.DB) (Group
 	var info GroupInfo
 	if err := db.QueryRow(query, groupId, userId).Scan(&info.GroupName, &info.UserCount, &info.UserRoles); err != nil {
 		return info, err
+	}
+	return info, nil
+}
+
+func GetGroupMembersFromDb(groupId string, db *sql.DB) ([]Member, error) {
+	query := `
+		SELECT 
+    		u.username,
+    		u.user_id,
+    		ARRAY_AGG(ur.role) AS user_roles
+		FROM user_groups ug
+		LEFT JOIN users u ON ug.user_id = u.user_id
+		LEFT JOIN user_group_roles ur ON ur.group_id = ug.group_id AND ur.user_id = u.user_id
+		WHERE ug.group_id = $1
+		GROUP BY u.username, u.user_id;
+`
+	rows, err := db.Query(query, groupId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []Member{}, nil
+		}
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var members []Member
+	for rows.Next() {
+		var member Member
+		err = rows.Scan(&member.Username, &member.UserId, &member.UserRoles)
+		if err != nil {
+			return nil, err
+		}
+		members = append(members, member)
+	}
+
+	return members, nil
 }
 
 var ErrNothingHappened = errors.New("nothing happened")

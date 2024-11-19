@@ -14,10 +14,13 @@ func registerGroupRoutes(router *gin.Engine, db *sql.DB) {
 	router.POST("/groups", func(c *gin.Context) {
 		CreateNewGroup(c, db)
 	})
-	router.GET("/groups/:id", func(c *gin.Context) {
+	router.GET("/groups/:groupId", func(c *gin.Context) {
 		GetGroupById(c, db)
 	})
-	router.DELETE("/groups/leave/:groupId", func(c *gin.Context) {
+	router.GET("/groups/:groupId/members/", func(c *gin.Context) {
+		GetGroupMembers(c, db)
+	})
+	router.DELETE("/groups/:groupId/leave", func(c *gin.Context) {
 		LeaveGroup(c, db)
 	})
 }

@@ -37,3 +37,9 @@ type Group struct {
 	GroupInfo  GroupInfo       `json:"groupInfo"`
 	GroupMeals []meal.MealCard `json:"meals"`
 }
+
+type Member struct {
+	Username  string   `json:"username"`
+	UserId    string   `json:"userId"`
+	UserRoles []string `json:"userRoles"`
+}
