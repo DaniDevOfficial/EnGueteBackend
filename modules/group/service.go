@@ -232,7 +232,7 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 		return
 	}
 	log.Println(3)
-	canPerformAction, err := CheckIfUserIsAllowedToPerformAction(inviteRequest.GroupId, jwtPayload.UserId, roles.CanCreateInviteLinks, db)
+	canPerformAction, _, err := CheckIfUserIsAllowedToPerformAction(inviteRequest.GroupId, jwtPayload.UserId, roles.CanCreateInviteLinks, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
 		return
@@ -396,7 +396,7 @@ func VoidInviteToken(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := CheckIfUserIsAllowedToPerformAction(groupId, jwtPayload.UserId, roles.CanVoidInviteLinks, db)
+	canPerformAction, _, err := CheckIfUserIsAllowedToPerformAction(groupId, jwtPayload.UserId, roles.CanVoidInviteLinks, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
 		return

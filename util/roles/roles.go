@@ -100,3 +100,13 @@ func GetAllRoleRightsForARole(role string) []string {
 	}
 	return allowedActions
 }
+
+func GetAllAllowedActionsForRoles(roles []string) []string {
+	var allowedActions []string
+	for permission := range RolePermissions {
+		if CanPerformAction(roles, permission) {
+			allowedActions = append(allowedActions, permission)
+		}
+	}
+	return allowedActions
+}

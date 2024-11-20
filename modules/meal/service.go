@@ -41,7 +41,7 @@ func CreateNewMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformAction(newMeal.GroupId, jwtPayload.UserId, roles.CanCreateMeal, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformAction(newMeal.GroupId, jwtPayload.UserId, roles.CanCreateMeal, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
@@ -125,7 +125,7 @@ func DeleteMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(mealId, jwtPayload.UserId, roles.CanDeleteMeal, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(mealId, jwtPayload.UserId, roles.CanDeleteMeal, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
@@ -171,7 +171,7 @@ func ChangeMealClosedFlag(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(updateClosedFlag.MealId, jwtPayload.UserId, roles.CanChangeMealFlags, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(updateClosedFlag.MealId, jwtPayload.UserId, roles.CanChangeMealFlags, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
@@ -217,7 +217,7 @@ func ChangeMealFulfilledFlag(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(updateFulfilledFlag.MealId, jwtPayload.UserId, roles.CanChangeMealFlags, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(updateFulfilledFlag.MealId, jwtPayload.UserId, roles.CanChangeMealFlags, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
@@ -275,7 +275,7 @@ func OptInMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !isSelfAction {
-		canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(requestOptInMeal.MealId, jwtPayload.UserId, roles.CanForceOptIn, db)
+		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(requestOptInMeal.MealId, jwtPayload.UserId, roles.CanForceOptIn, db)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 			return
@@ -340,7 +340,7 @@ func ChangeOptInMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !isSelfAction {
-		canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(requestOptInMeal.MealId, jwtPayload.UserId, roles.CanForceOptIn, db)
+		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(requestOptInMeal.MealId, jwtPayload.UserId, roles.CanForceOptIn, db)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 			return
@@ -407,7 +407,7 @@ func AddCookToMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !isSelfAdd {
-		canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(addCookToMealData.MealId, jwtPayload.UserId, roles.CanForceAddCook, db)
+		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(addCookToMealData.MealId, jwtPayload.UserId, roles.CanForceAddCook, db)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 			return
@@ -470,7 +470,7 @@ func RemoveCookFromMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !isSelfAction {
-		canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(removeCookFromMealData.MealId, jwtPayload.UserId, roles.CanForceAddCook, db)
+		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(removeCookFromMealData.MealId, jwtPayload.UserId, roles.CanForceAddCook, db)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 			return
@@ -526,7 +526,7 @@ func UpdateMealTitle(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newTitle.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newTitle.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
@@ -571,7 +571,7 @@ func UpdateMealType(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newType.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newType.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
@@ -614,7 +614,7 @@ func UpdateMealNotes(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newNotes.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newNotes.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
@@ -659,7 +659,7 @@ func UpdateMealScheduledAt(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newScheduledAt.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newScheduledAt.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return

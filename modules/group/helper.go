@@ -49,15 +49,15 @@ func IsUserInGroup(groupId string, userId string, db *sql.DB) (bool, error) {
 // return err => internal server error
 //
 // return false => user is not in group or cant perform action
-func CheckIfUserIsAllowedToPerformActionViaMealId(mealId string, userId string, actionToPerform string, db *sql.DB) (bool, error) {
+func CheckIfUserIsAllowedToPerformActionViaMealId(mealId string, userId string, actionToPerform string, db *sql.DB) (bool, []string, error) {
 	userRoles, err := GetUserRolesInGroupViaMealId(mealId, userId, db)
 	if err != nil {
 		if errors.Is(err, ErrUserIsNotPartOfThisGroup) {
-			return false, nil
+			return false, nil, nil
 		}
-		return false, err
+		return false, nil, err
 	}
-	return roles.CanPerformAction(userRoles, actionToPerform), nil
+	return roles.CanPerformAction(userRoles, actionToPerform), userRoles, nil
 }
 
 // CheckIfUserIsAllowedToPerformAction Check if the user is able to perform an action in a group
@@ -67,13 +67,13 @@ func CheckIfUserIsAllowedToPerformActionViaMealId(mealId string, userId string, 
 // return err => internal server error
 //
 // return false => user is not in group or cant perform action
-func CheckIfUserIsAllowedToPerformAction(groupId string, userId string, actionToPerform string, db *sql.DB) (bool, error) {
+func CheckIfUserIsAllowedToPerformAction(groupId string, userId string, actionToPerform string, db *sql.DB) (isAllowedToPerformAction bool, userRoles []string, error error) {
 	userRoles, err := GetUserRolesInGroup(groupId, userId, db)
 	if err != nil {
 		if errors.Is(err, ErrUserIsNotPartOfThisGroup) {
-			return false, nil
+			return false, userRoles, nil
 		}
-		return false, err
+		return false, userRoles, err
 	}
-	return roles.CanPerformAction(userRoles, actionToPerform), nil
+	return roles.CanPerformAction(userRoles, actionToPerform), userRoles, nil
 }
