@@ -1,7 +1,5 @@
 package group
 
-import "enguete/modules/meal"
-
 type GroupError struct {
 	Error string `json:"error"`
 }
@@ -28,14 +26,28 @@ type ResponseNewGroup struct {
 }
 
 type GroupInfo struct {
+	GroupId   string   `json:"groupId"`
 	GroupName string   `json:"groupName"`
 	UserCount int      `json:"userCount"`
 	UserRoles []string `json:"userRoles"`
 }
 
 type Group struct {
-	GroupInfo  GroupInfo       `json:"groupInfo"`
-	GroupMeals []meal.MealCard `json:"meals"`
+	GroupInfo  GroupInfo  `json:"groupInfo"`
+	GroupMeals []MealCard `json:"meals"`
+}
+
+type MealCard struct {
+	MealID           string `json:"mealId"`
+	Title            string `json:"title"`
+	Closed           bool   `json:"closed"`
+	Fulfilled        bool   `json:"fulfilled"`
+	DateTime         string `json:"dateTime"`
+	MealType         string `json:"mealType"`
+	Notes            string `json:"notes"`
+	ParticipantCount int    `json:"participantCount"`
+	UserPreference   string `json:"userPreference"`
+	IsCook           bool   `json:"isCook"`
 }
 
 type Member struct {

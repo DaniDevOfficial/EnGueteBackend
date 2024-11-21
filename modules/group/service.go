@@ -2,7 +2,6 @@ package group
 
 import (
 	"database/sql"
-	"enguete/modules/meal"
 	"enguete/modules/user"
 	"enguete/util/auth"
 	"enguete/util/roles"
@@ -130,6 +129,7 @@ func GetGroupById(c *gin.Context, db *sql.DB) {
 
 	inDB, err := IsUserInGroup(groupId, jwtPayload.UserId, db)
 	if err != nil {
+		log.Println(err)
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server error"})
 		return
 	}
@@ -140,12 +140,14 @@ func GetGroupById(c *gin.Context, db *sql.DB) {
 
 	groupInformation, err := GetGroupInformationFromDb(groupId, jwtPayload.UserId, db)
 	if err != nil {
+		log.Println(err)
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server error"})
 		return
 	}
 
-	mealCards, err := meal.GetMealsInGroupDB(groupId, jwtPayload.UserId, db)
+	mealCards, err := GetMealsInGroupDB(groupId, jwtPayload.UserId, db)
 	if err != nil {
+		log.Println(err)
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server Error"})
 		return
 	}
@@ -175,6 +177,7 @@ func GetGroupById(c *gin.Context, db *sql.DB) {
 func GetGroupMembers(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
 	if err != nil {
+		log.Println(err)
 		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Authorization is not valid"})
 		return
 	}
@@ -182,6 +185,7 @@ func GetGroupMembers(c *gin.Context, db *sql.DB) {
 	groupId := c.Param("groupId")
 	inGroup, err := IsUserInGroup(groupId, jwtPayload.UserId, db)
 	if err != nil {
+		log.Println(err)
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server error"})
 		return
 	}
@@ -192,6 +196,7 @@ func GetGroupMembers(c *gin.Context, db *sql.DB) {
 
 	members, err := GetGroupMembersFromDb(groupId, db)
 	if err != nil {
+		log.Println(err)
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server error"})
 		return
 	}

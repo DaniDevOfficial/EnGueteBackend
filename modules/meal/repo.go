@@ -30,61 +30,6 @@ func DeleteMealInDB(mealId string, db *sql.DB) error {
 
 var ErrNoData = errors.New("no data found")
 
-func GetMealsInGroupDB(groupId string, userId string, db *sql.DB) ([]MealCard, error) {
-	query := `
-        SELECT 
-            m.meal_id,
-            m.title,
-            m.closed,
-            m.fulfilled,
-            m.date_time,
-            m.meal_type,
-            m.notes,
-            COUNT(CASE WHEN mp.preference = 'opt-in' OR mp.preference = 'eat later' THEN 1 END) AS participant_count,
-            COALESCE(user_pref.preference, 'none') AS user_preference,
-            CASE WHEN mc.user_id IS NOT NULL THEN true ELSE false END AS is_cook
-        FROM meals m
-        LEFT JOIN meal_preferences mp ON mp.meal_id = m.meal_id
-        LEFT JOIN meal_preferences user_pref ON user_pref.meal_id = m.meal_id AND user_pref.user_id = $2
-        LEFT JOIN meal_cooks mc ON mc.meal_id = m.meal_id AND mc.user_id = $2
-        WHERE m.group_id = $1
-        GROUP BY m.meal_id, user_pref.preference, mc.user_id
-        ORDER BY m.date_time
-`
-	rows, err := db.Query(query, groupId, userId, groupId)
-	var mealCards []MealCard
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return mealCards, nil
-		}
-	}
-
-	defer rows.Close()
-
-	for rows.Next() {
-		var mealCard MealCard
-		err := rows.Scan(
-			&mealCard.MealID,
-			&mealCard.Title,
-			&mealCard.Closed,
-			&mealCard.Fulfilled,
-			&mealCard.DateTime,
-			&mealCard.MealType,
-			&mealCard.Notes,
-			&mealCard.ParticipantCount,
-			&mealCard.UserPreference,
-			&mealCard.IsCook,
-		)
-		if err != nil {
-			return mealCards, err
-		}
-		mealCards = append(mealCards, mealCard)
-	}
-
-	return mealCards, nil
-
-}
-
 func GetSingularMealInformation(mealId string, userId string, db *sql.DB) (MealInformation, error) {
 	query := `
         SELECT 
