@@ -61,7 +61,7 @@ func GetGroupInformationFromDb(groupId string, userId string, db *sql.DB) (Group
 	SELECT
 	    g.group_id,
 	    g.group_name,
-		COUNT(ug.user_id) AS user_count,
+		COUNT(DISTINCT ug.user_id) AS user_count,
 	    ARRAY_AGG(ur.role) AS user_roles
 	FROM groups g 
 	LEFT JOIN user_groups ug ON ug.group_id = g.group_id
@@ -154,7 +154,7 @@ func GetMealsInGroupDB(groupId string, userId string, db *sql.DB) ([]MealCard, e
 	for rows.Next() {
 		var mealCard MealCard
 		err := rows.Scan(
-			&mealCard.MealID,
+			&mealCard.MealId,
 			&mealCard.Title,
 			&mealCard.Closed,
 			&mealCard.Fulfilled,

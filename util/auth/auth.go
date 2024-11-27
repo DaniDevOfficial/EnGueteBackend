@@ -31,11 +31,11 @@ func GetJWTPayloadFromHeader(c *gin.Context) (jwt.JWTPayload, error) {
 		return jwtData, err
 	}
 	valid, err := jwt.VerifyToken(jwtToken)
-	if !valid {
-		return jwtData, fmt.Errorf("jwt token is not valid")
-	}
 	if err != nil {
 		return jwtData, err
+	}
+	if !valid {
+		return jwtData, fmt.Errorf("jwt token is not valid")
 	}
 	jwtData, err = jwt.DecodeBearer(jwtToken)
 	if err != nil {

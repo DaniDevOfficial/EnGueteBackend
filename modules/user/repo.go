@@ -57,7 +57,7 @@ func GetUsersGroupByUserIdFromDB(userId string, db *sql.DB) ([]GroupCard, error)
 		SELECT
 			g.group_id,
 			g.group_name,
-			COUNT(ug.user_id) AS user_count
+			COUNT(DISTINCT ug.user_id) AS user_count
 		FROM
 			groups g
 		LEFT JOIN 

@@ -38,8 +38,9 @@ func main() {
 	group.RegisterGroupRoute(router, dbConnection)
 	meal.RegisterMealRoute(router, dbConnection)
 	management.RegisterManagementRoute(router, dbConnection)
+
 	fmt.Println("🚀 Server is listening on http://localhost:8000/")
-	log.Fatal(router.Run("localhost:8000"))
+	log.Fatal(router.Run("0.0.0.0:8000"))
 }
 
 // corsMiddleware sets the CORS headers to allow all origins.

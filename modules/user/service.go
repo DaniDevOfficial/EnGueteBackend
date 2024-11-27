@@ -103,7 +103,7 @@ func CreateNewUser(c *gin.Context, db *sql.DB) {
 // @Produce json
 // @Param user body SignInCredentials true "Sign-in credentials"
 // @Success 200 {object} jwt.JWTTokenResponse
-// @Failure 400 {object} UserError "Invalid username or password"
+// @Failure 401 {object} UserError "Invalid username or password"
 // @Failure 500 {object} UserError "Server error during sign-in"
 // @Router /auth/signin [post]
 func SignIn(c *gin.Context, db *sql.DB) {
@@ -118,12 +118,12 @@ func SignIn(c *gin.Context, db *sql.DB) {
 	userData, err := GetUserByName(credentials.Username, db)
 	if err != nil {
 		log.Println(err)
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Wrong USERNAME Or Password"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Wrong USERNAME Or Password"})
 		return
 	}
 
 	if !hashing.CheckHashedString(userData.PasswordHash, credentials.Password) {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Wrong Username Or Password"})
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Wrong Username Or Password"})
 		return
 	}
 
@@ -149,7 +149,7 @@ func SignIn(c *gin.Context, db *sql.DB) {
 // @Tags users
 // @Accept json
 // @Produce json
-// @Param id path string true "User ID"
+// @Param Authorization header string true "JWT Token"
 // @Success 200 {object} ResponseUserData
 // @Failure 400 {object} UserError "Invalid user ID"
 // @Failure 404 {object} UserError "User not found"
@@ -157,14 +157,14 @@ func SignIn(c *gin.Context, db *sql.DB) {
 // @Router /users/{userId} [get]
 func GetUserInformationById(c *gin.Context, db *sql.DB) {
 
-	userId := c.Param("userId")
-	userId = strings.Trim(userId, " ")
-	if userId == "" {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "No userId attatched"})
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Error getting JWT Payload"})
 		return
 	}
 
-	userData, err := GetUserByIdFromDB(userId, db)
+	userData, err := GetUserByIdFromDB(jwtPayload.UserId, db)
 	if errors.Is(err, sql.ErrNoRows) {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
@@ -175,7 +175,7 @@ func GetUserInformationById(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	groupData, err := GetUsersGroupByUserIdFromDB(userId, db)
+	groupData, err := GetUsersGroupByUserIdFromDB(jwtPayload.UserId, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, UserError{Error: "internal server error"})
 	}

@@ -38,7 +38,7 @@ type Group struct {
 }
 
 type MealCard struct {
-	MealID           string `json:"mealId"`
+	MealId           string `json:"mealId"`
 	Title            string `json:"title"`
 	Closed           bool   `json:"closed"`
 	Fulfilled        bool   `json:"fulfilled"`
