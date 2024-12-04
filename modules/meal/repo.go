@@ -44,12 +44,13 @@ func GetSingularMealInformation(mealId string, userId string, db *sql.DB) (MealI
             CASE WHEN mc.user_id IS NOT NULL THEN true ELSE false END AS is_cook
         FROM meals m
         LEFT JOIN meal_preferences mp ON mp.meal_id = m.meal_id
+        LEFT JOIN meal_cooks mc ON mc.meal_id = m.meal_id
         WHERE m.meal_id = $1
         GROUP BY m.meal_id, mc.user_id
         ORDER BY m.date_time
 `
 	var mealInformation MealInformation
-	err := db.QueryRow(query, mealId, userId).Scan(
+	err := db.QueryRow(query, mealId).Scan(
 		&mealInformation.MealID,
 		&mealInformation.Title,
 		&mealInformation.Closed,

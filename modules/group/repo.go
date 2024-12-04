@@ -138,7 +138,7 @@ func GetMealsInGroupDB(groupId string, userId string, db *sql.DB) ([]MealCard, e
         LEFT JOIN meal_cooks mc ON mc.meal_id = m.meal_id AND mc.user_id = $2
         WHERE m.group_id = $1
         GROUP BY m.meal_id, user_pref.preference, mc.user_id
-        ORDER BY m.date_time
+        ORDER BY m.date_time desc 
 `
 	rows, err := db.Query(query, groupId, userId)
 	var mealCards []MealCard

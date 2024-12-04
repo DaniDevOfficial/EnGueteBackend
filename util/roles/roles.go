@@ -1,7 +1,5 @@
 package roles
 
-import "log"
-
 const (
 	CanUpdateMeal      = "can_update_meal"
 	CanDeleteMeal      = "can_delete_meal"
@@ -74,7 +72,6 @@ func CanPerformAction(roles []string, action string) bool {
 			return true
 		}
 	}
-	log.Println("Cannot perform action:", action, "with roles:", roles)
 	return false
 }
 

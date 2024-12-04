@@ -26,10 +26,11 @@ type ResponseNewGroup struct {
 }
 
 type GroupInfo struct {
-	GroupId   string   `json:"groupId"`
-	GroupName string   `json:"groupName"`
-	UserCount int      `json:"userCount"`
-	UserRoles []string `json:"userRoles"`
+	GroupId        string   `json:"groupId"`
+	GroupName      string   `json:"groupName"`
+	UserCount      int      `json:"userCount"`
+	UserRoles      []string `json:"userRoles"`
+	UserRoleRights []string `json:"userRoleRights"`
 }
 
 type Group struct {
