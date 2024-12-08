@@ -83,5 +83,5 @@ type MealParticipant struct {
 
 type Meal struct {
 	MealInformation            MealInformation   `json:"mealInformation"`
-	MealParticipantInformation []MealParticipant `json:"mealParticipant"`
+	MealParticipantInformation []MealParticipant `json:"mealParticipants"`
 }

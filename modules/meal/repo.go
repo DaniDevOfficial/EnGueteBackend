@@ -82,7 +82,7 @@ func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealPar
         		ELSE FALSE
     		END AS is_cook
 		FROM users u
-		LEFT JOIN meal_preferences mp ON u.user_id = mp.user_id AND mp.meal_id = $1 AND mp.preference = 'opt-in'
+		LEFT JOIN meal_preferences mp ON u.user_id = mp.user_id AND mp.meal_id = $1
 		LEFT JOIN meal_cooks mc ON u.user_id = mc.user_id AND mc.meal_id = $1
 		WHERE mp.meal_id = $1 OR mc.meal_id = $1;
 `

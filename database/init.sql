@@ -1,11 +1,11 @@
 CREATE
-    EXTENSION IF NOT EXISTS "uuid-ossp";
+EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Users Table
 CREATE TABLE users
 (
     user_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    username          VARCHAR(100)        NOT NULL,
+    username      VARCHAR(100)        NOT NULL,
     email         VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255)        NOT NULL,
     created_at    TIMESTAMPTZ      DEFAULT CURRENT_TIMESTAMP
@@ -62,8 +62,7 @@ CREATE TABLE user_group_roles
     group_id            UUID        NOT NULL REFERENCES groups (group_id) ON DELETE CASCADE,
     role                VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'manager', 'member')),
 
-
-    CONSTRAINT  unique_user_group_roles UNIQUE (user_groups_id, user_id, group_id, role)
+    CONSTRAINT unique_user_group_roles UNIQUE (user_groups_id, user_id, group_id, role)
 );
 
 
@@ -91,7 +90,6 @@ CREATE TABLE meal_preferences
     preference    VARCHAR(20) NOT NULL CHECK (preference IN ('opt-in', 'opt-out', 'undecided', 'eat later')),
     changed_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
 
     CONSTRAINT unique_meal_preference UNIQUE (meal_id, user_id)
 );
