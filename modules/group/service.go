@@ -27,21 +27,14 @@ import (
 // @Router /groups [post]
 func CreateNewGroup(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
-
 	if err != nil {
-		errorMessage := GroupError{
-			Error: "Authorisation is not valid",
-		}
-		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
+		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Authorisation is not valid"})
 		return
 	}
 
 	var newGroupData RequestNewGroup
 	if err := c.ShouldBindJSON(&newGroupData); err != nil {
-		errorMessage := GroupError{
-			Error: "Error decoding request",
-		}
-		c.AbortWithStatusJSON(http.StatusBadRequest, errorMessage)
+		c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Error decoding request"})
 		return
 	}
 
@@ -54,29 +47,19 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 	if err != nil {
 		_ = tx.Rollback()
 		log.Println(err)
-		errorMessage := GroupError{
-			Error: "Error Creating Group",
-		}
-		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Creating Group"})
 		return
 	}
 
 	userGroupId, err := AddUserToGroupWithTransaction(newGroupId, jwtPayload.UserId, tx)
 	if err != nil {
-		return
-	}
-	if err != nil {
 		_ = tx.Rollback()
-		errorMessage := GroupError{
-			Error: "Error Adding User to Group",
-		}
-		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Group"})
 		return
 	}
 
 	err = AddRoleToUserInGroupWithTransaction(newGroupId, jwtPayload.UserId, roles.AdminRole, userGroupId, tx)
 	if err != nil {
-		log.Println(err)
 		_ = tx.Rollback()
 		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Group1"})
 		return
@@ -91,10 +74,7 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 
 	err = tx.Commit()
 	if err != nil {
-		errorMessage := GroupError{
-			Error: "Error Adding User to Group",
-		}
-		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Group"})
 		return
 	}
 
@@ -135,7 +115,7 @@ func GetGroupById(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !inDB {
-		c.JSON(http.StatusUnauthorized, GroupError{Error: "Group Not Found"})
+		c.JSON(http.StatusForbidden, GroupError{Error: "You are not in this group or it doesnt exist"})
 		return
 	}
 
@@ -192,7 +172,7 @@ func GetGroupMembers(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !inGroup {
-		c.JSON(http.StatusUnauthorized, GroupError{Error: "Group Not Found"})
+		c.JSON(http.StatusForbidden, GroupError{Error: "You are not in this group or it doesnt exist"})
 		return
 	}
 
@@ -221,65 +201,44 @@ func GetGroupMembers(c *gin.Context, db *sql.DB) {
 // @Router /groups/invite [post]
 func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
-	log.Println(1)
 	if err != nil {
-		errorMessage := GroupError{
-			Error: "Authorisation is not valid",
-		}
-		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
+		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Authorisation is not valid"})
 		return
 	}
-	log.Println(2)
 	var inviteRequest InviteLinkGenerationRequest
 	if err := c.ShouldBindJSON(&inviteRequest); err != nil {
-		errorMessage := GroupError{
-			Error: "Error decoding request",
-		}
-		c.AbortWithStatusJSON(http.StatusBadRequest, errorMessage)
+		c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Error decoding request"})
 		return
 	}
-	log.Println(3)
 	canPerformAction, _, err := CheckIfUserIsAllowedToPerformAction(inviteRequest.GroupId, jwtPayload.UserId, roles.CanCreateInviteLinks, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, GroupError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, GroupError{Error: "You are not allowed to perform this action"})
 	}
 	log.Println(4)
 
 	tx, err := db.Begin()
 	if err != nil {
-		errorMessage := GroupError{
-			Error: "Internal server error",
-		}
-		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
 		return
 	}
-	log.Println(5)
 
 	token, err := CreateNewInviteInDBWithTransaction(inviteRequest.GroupId, tx)
 	if err != nil {
 		log.Println(err)
 		_ = tx.Rollback()
-		errorMessage := GroupError{
-			Error: "Error Creating Invite1",
-		}
-		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Creating Invite1"})
 		return
 	}
-	log.Println(6)
 
 	err = tx.Commit()
 	if err != nil {
-		errorMessage := GroupError{
-			Error: "Error Creating Invite2",
-		}
-		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Creating Invite2"})
 		return
 	}
-	log.Println(7)
 
 	fullLink := auth.GenerateInviteLink(token)
 	c.JSON(http.StatusCreated, InviteLinkGenerationResponse{
@@ -304,10 +263,7 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
 	if err != nil {
-		errorMessage := GroupError{
-			Error: "Invalid jwt token",
-		}
-		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
+		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Invalid jwt token"})
 		return
 	}
 
@@ -315,20 +271,14 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 	groupId, err := ValidateInviteTokenInDB(inviteToken, db)
 	if err != nil {
 		log.Println(err)
-		errorMessage := GroupError{
-			Error: "Invalid invite token",
-		}
-		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
+		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Invalid invite token"})
 		return
 	}
 
 	_, err = user.GetUserByIdFromDB(jwtPayload.UserId, db)
 	if err != nil {
 		log.Println(err)
-		errorMessage := GroupError{
-			Error: "User not found",
-		}
-		c.AbortWithStatusJSON(http.StatusNotFound, errorMessage)
+		c.AbortWithStatusJSON(http.StatusNotFound, GroupError{Error: "User not found"})
 		return
 	}
 
@@ -339,14 +289,8 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 
 	userGroupId, err := AddUserToGroupWithTransaction(groupId, jwtPayload.UserId, tx)
 	if err != nil {
-		return
-	}
-	if err != nil {
 		_ = tx.Rollback()
-		errorMessage := GroupError{
-			Error: "Error Adding User to Group",
-		}
-		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Group"})
 		return
 	}
 
@@ -359,10 +303,7 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 
 	err = tx.Commit()
 	if err != nil {
-		errorMessage := GroupError{
-			Error: "Error Adding User to Group",
-		}
-		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Group"})
 		return
 	}
 
@@ -386,20 +327,14 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 func VoidInviteToken(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
 	if err != nil {
-		errorMessage := GroupError{
-			Error: "Invalid jwt token",
-		}
-		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
+		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Invalid jwt token"})
 		return
 	}
 
 	inviteToken := c.Param("inviteToken")
 	groupId, err := ValidateInviteTokenInDB(inviteToken, db)
 	if err != nil {
-		errorMessage := GroupError{
-			Error: "Error validating invite token",
-		}
-		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error validating invite token"})
 		return
 	}
 
@@ -409,15 +344,12 @@ func VoidInviteToken(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, GroupError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, GroupError{Error: "You are not allowed to perform this action"})
 	}
 
 	err = VoidInviteTokenIfAllowedInDB(groupId, jwtPayload.UserId, db)
 	if err != nil {
-		errorMessage := GroupError{
-			Error: "Error deleting invite token",
-		}
-		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error deleting invite token"})
 		return
 	}
 
@@ -440,10 +372,7 @@ func VoidInviteToken(c *gin.Context, db *sql.DB) {
 func LeaveGroup(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
 	if err != nil {
-		errorMessage := GroupError{
-			Error: "Authorisation is not valid",
-		}
-		c.AbortWithStatusJSON(http.StatusUnauthorized, errorMessage)
+		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Authorisation is not valid"})
 		return
 	}
 
@@ -451,17 +380,10 @@ func LeaveGroup(c *gin.Context, db *sql.DB) {
 	err = LeaveGroupInDB(groupId, jwtPayload.UserId, db) //TODO: some check for if a user was eiter the last user in a group or if there are no admins left. If he was the last one delete the group and if he was the last admin pick a new one by join-date
 	if err != nil {
 		if errors.Is(err, ErrNoMatchingGroupOrUser) {
-			errorMessage := GroupError{
-				Error: "Cant leave a group your not in or that doesnt exist",
-			}
-			c.AbortWithStatusJSON(http.StatusBadRequest, errorMessage)
+			c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Cant leave a group your not in or that doesnt exist"})
 			return
 		}
-
-		errorMessage := GroupError{
-			Error: "Error leaving group",
-		}
-		c.AbortWithStatusJSON(http.StatusInternalServerError, errorMessage)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error leaving group"})
 		return
 	}
 

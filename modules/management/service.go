@@ -45,7 +45,7 @@ func KickUserFromGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, ManagementError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, ManagementError{Error: "You are not allowed to perform this action"})
 	}
 
 	err = KickUSerFromGroupInDB(kickUserData.GroupId, kickUserData.UserId, db)
@@ -95,7 +95,7 @@ func BanUserFromGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, ManagementError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, ManagementError{Error: "You are not allowed to perform this action"})
 	}
 
 	//TODO: either have a seperate function or a follow up, which adds the userId in a blacklist for this specific group
@@ -142,7 +142,7 @@ func UnbanUserFromGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, ManagementError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, ManagementError{Error: "You are not allowed to perform this action"})
 	}
 
 	err = UnBanUserFromGroupInDB(kickUserData.GroupId, kickUserData.UserId, db)
@@ -193,7 +193,7 @@ func AddRoleToUser(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, ManagementError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, ManagementError{Error: "You are not allowed to perform this action"})
 		return
 	}
 
@@ -245,7 +245,7 @@ func RemoveRoleFromUser(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, ManagementError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, ManagementError{Error: "You are not allowed to perform this action"})
 		return
 	}
 
