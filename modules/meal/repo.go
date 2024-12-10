@@ -9,7 +9,7 @@ import (
 
 //General
 
-func CreateNewMealInDB(newMeal RequestNewMeal, userId string, db *sql.DB) (string, error) {
+func CreateNewMealInDBWithTransaction(newMeal RequestNewMeal, userId string, db *sql.Tx) (string, error) {
 	query := `INSERT INTO meals
 				(title, notes, date_time, meal_type, created_by, group_id)
 			VALUES
@@ -20,6 +20,23 @@ func CreateNewMealInDB(newMeal RequestNewMeal, userId string, db *sql.DB) (strin
 	var mealId string
 	err := row.Scan(&mealId)
 	return mealId, err
+}
+
+func AddAllGroupMembersAsParticipantsWithTransaction(mealId string, groupId string, tx *sql.Tx) error {
+	query := `
+	    INSERT INTO meal_preferences (meal_id, user_id, preference, created_at)
+        SELECT $1, user_id, 'undecided', NOW()
+        FROM group_members
+        WHERE group_id = $2
+          AND NOT EXISTS (
+            SELECT 1 FROM meal_preferences
+            WHERE meal_preferences.meal_id = $1
+            AND meal_preferences.user_id = group_members.user_id
+          );	
+`
+	_, err := tx.Exec(query, mealId, groupId)
+	return err
+
 }
 
 func DeleteMealInDB(mealId string, db *sql.DB) error {

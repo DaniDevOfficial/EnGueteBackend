@@ -36,9 +36,6 @@ func CreateNewMeal(c *gin.Context, db *sql.DB) {
 	}
 
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
-	log.Println(jwtPayload)
-	log.Println(err)
-
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
@@ -54,11 +51,34 @@ func CreateNewMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	mealId, err := CreateNewMealInDB(newMeal, jwtPayload.UserId, db)
+	tx, err := db.Begin()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
 	}
+
+	mealId, err := CreateNewMealInDBWithTransaction(newMeal, jwtPayload.UserId, tx)
+	if err != nil {
+		err = tx.Rollback()
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+
+	err = AddAllGroupMembersAsParticipantsWithTransaction(mealId, newMeal.GroupId, tx)
+	if err != nil {
+		err = tx.Rollback()
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		err = tx.Rollback()
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+
 	log.Println("New meal created with id:", mealId)
 	c.JSON(http.StatusCreated, ResponseNewMeal{MealId: mealId})
 }
