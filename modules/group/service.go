@@ -126,7 +126,7 @@ func GetGroupById(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	groupInformation.UserRoleRights = roles.GetAllAllowedActionsForRoles(groupInformation.UserRoleRights)
+	groupInformation.UserRoleRights = roles.GetAllAllowedActionsForRoles(groupInformation.UserRoles)
 	mealCards, err := GetMealsInGroupDB(groupId, jwtPayload.UserId, db)
 	if err != nil {
 		log.Println(err)

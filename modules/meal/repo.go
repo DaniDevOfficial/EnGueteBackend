@@ -25,13 +25,13 @@ func CreateNewMealInDBWithTransaction(newMeal RequestNewMeal, userId string, db 
 func AddAllGroupMembersAsParticipantsWithTransaction(mealId string, groupId string, tx *sql.Tx) error {
 	query := `
 	    INSERT INTO meal_preferences (meal_id, user_id, preference, created_at)
-        SELECT $1, user_id, 'undecided', NOW()
-        FROM group_members
-        WHERE group_id = $2
+        SELECT $1, ug.user_id, 'undecided', NOW()
+        FROM user_groups ug
+        WHERE ug.group_id = $2
           AND NOT EXISTS (
-            SELECT 1 FROM meal_preferences
-            WHERE meal_preferences.meal_id = $1
-            AND meal_preferences.user_id = group_members.user_id
+            SELECT 1 FROM meal_preferences mp
+            WHERE mp.meal_id = $1
+            AND mp.user_id = ug.user_id
           );	
 `
 	_, err := tx.Exec(query, mealId, groupId)
@@ -124,6 +124,8 @@ func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealPar
 		if err != nil {
 			return mealParticipants, err
 		}
+		mealParticipants = append(mealParticipants, mealParticipant)
+
 	}
 	return mealParticipants, nil
 }
