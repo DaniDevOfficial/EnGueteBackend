@@ -2,7 +2,6 @@ package group
 
 import (
 	"database/sql"
-	"enguete/modules/meal"
 	"enguete/modules/user"
 	"enguete/util/auth"
 	"enguete/util/roles"
@@ -206,11 +205,13 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Authorisation is not valid"})
 		return
 	}
+
 	var inviteRequest InviteLinkGenerationRequest
 	if err := c.ShouldBindJSON(&inviteRequest); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Error decoding request"})
 		return
 	}
+
 	canPerformAction, _, err := CheckIfUserIsAllowedToPerformAction(inviteRequest.GroupId, jwtPayload.UserId, roles.CanCreateInviteLinks, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
@@ -218,8 +219,8 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 	}
 	if !canPerformAction {
 		c.JSON(http.StatusForbidden, GroupError{Error: "You are not allowed to perform this action"})
+		return
 	}
-	log.Println(4)
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -229,7 +230,6 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 
 	token, err := CreateNewInviteInDBWithTransaction(inviteRequest.GroupId, tx)
 	if err != nil {
-		log.Println(err)
 		_ = tx.Rollback()
 		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Creating Invite1"})
 		return
@@ -286,6 +286,7 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 	tx, err := db.Begin()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
+		return
 	}
 
 	userGroupId, err := AddUserToGroupWithTransaction(groupId, jwtPayload.UserId, tx)
@@ -302,7 +303,7 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = meal.AddMemberToAllOpenMealsWithTransaction(groupId, jwtPayload.UserId, tx)
+	err = AddMemberToAllOpenMealsWithTransaction(groupId, jwtPayload.UserId, tx)
 	if err != nil {
 		_ = tx.Rollback()
 		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Meals"})
@@ -403,7 +404,7 @@ func LeaveGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = meal.RemovePreferencesInOpenMealsInGroup(groupId, jwtPayload.UserId, tx)
+	err = RemovePreferencesInOpenMealsInGroup(groupId, jwtPayload.UserId, tx)
 	if err != nil {
 		err = tx.Rollback()
 		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error leaving group"})

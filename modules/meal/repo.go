@@ -57,19 +57,6 @@ func AddMemberToAllOpenMealsWithTransaction(userId string, groupId string, tx *s
 	return err
 }
 
-func RemovePreferencesInOpenMealsInGroup(userId string, groupId string, tx *sql.Tx) error {
-	query := `
-		DELETE FROM Meal_Prefrences mp
-		LEFT JOIN Meals m ON m.meal_id = mp.meal_id
-		WHERE mp.group_id = $2
-		AND mp.user_id = $1
-  			AND NOT m.closed
-  			AND NOT m.fulfilled
-`
-	_, err := tx.Exec(query, userId, groupId)
-	return err
-}
-
 func DeleteMealInDB(mealId string, db *sql.DB) error {
 	query := `DELETE FROM meals WHERE meal_id=$1`
 	_, err := db.Exec(query, mealId)
