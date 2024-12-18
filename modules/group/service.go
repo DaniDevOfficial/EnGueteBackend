@@ -2,6 +2,7 @@ package group
 
 import (
 	"database/sql"
+	"enguete/modules/meal"
 	"enguete/modules/user"
 	"enguete/util/auth"
 	"enguete/util/roles"
@@ -301,6 +302,13 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 		return
 	}
 
+	err = meal.AddMemberToAllOpenMealsWithTransaction(groupId, jwtPayload.UserId, tx)
+	if err != nil {
+		_ = tx.Rollback()
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Meals"})
+		return
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Group"})
@@ -377,12 +385,33 @@ func LeaveGroup(c *gin.Context, db *sql.DB) {
 	}
 
 	groupId := c.Param("groupId")
-	err = LeaveGroupInDB(groupId, jwtPayload.UserId, db) //TODO: some check for if a user was eiter the last user in a group or if there are no admins left. If he was the last one delete the group and if he was the last admin pick a new one by join-date
+
+	tx, err := db.Begin()
 	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
+		return
+	}
+
+	err = LeaveGroupInDB(groupId, jwtPayload.UserId, tx) //TODO: some check for if a user was eiter the last user in a group or if there are no admins left. If he was the last one delete the group and if he was the last admin pick a new one by join-date
+	if err != nil {
+		err = tx.Rollback()
 		if errors.Is(err, ErrNoMatchingGroupOrUser) {
 			c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Cant leave a group your not in or that doesnt exist"})
 			return
 		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error leaving group"})
+		return
+	}
+
+	err = meal.RemovePreferencesInOpenMealsInGroup(groupId, jwtPayload.UserId, tx)
+	if err != nil {
+		err = tx.Rollback()
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error leaving group"})
+
+	}
+
+	err = tx.Commit()
+	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error leaving group"})
 		return
 	}

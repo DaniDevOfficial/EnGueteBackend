@@ -348,14 +348,14 @@ func VoidInviteTokenIfAllowedInDB(inviteToken string, userId string, db *sql.DB)
 
 var ErrNoMatchingGroupOrUser = errors.New("no matching group or user found for deletion")
 
-func LeaveGroupInDB(groupId string, userId string, db *sql.DB) error {
+func LeaveGroupInDB(groupId string, userId string, tx *sql.Tx) error {
 	query := `
 		DELETE FROM user_groups
 		WHERE group_id = $1
 		AND user_id = $2
 	`
 
-	result, err := db.Exec(query, groupId, userId)
+	result, err := tx.Exec(query, groupId, userId)
 	if err != nil {
 		return err
 	}

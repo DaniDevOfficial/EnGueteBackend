@@ -298,7 +298,7 @@ func OptInMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !isSelfAction {
-		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(requestOptInMeal.MealId, jwtPayload.UserId, roles.CanForceOptIn, db)
+		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(requestOptInMeal.MealId, jwtPayload.UserId, roles.CanForceMealPreferenceAndCooking, db)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 			return
@@ -363,7 +363,7 @@ func ChangeOptInMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !isSelfAction {
-		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(requestOptInMeal.MealId, jwtPayload.UserId, roles.CanForceOptIn, db)
+		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(requestOptInMeal.MealId, jwtPayload.UserId, roles.CanForceMealPreferenceAndCooking, db)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 			return
@@ -430,7 +430,7 @@ func AddCookToMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !isSelfAdd {
-		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(addCookToMealData.MealId, jwtPayload.UserId, roles.CanForceAddCook, db)
+		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(addCookToMealData.MealId, jwtPayload.UserId, roles.CanForceMealPreferenceAndCooking, db)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 			return
@@ -493,7 +493,7 @@ func RemoveCookFromMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !isSelfAction {
-		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(removeCookFromMealData.MealId, jwtPayload.UserId, roles.CanForceAddCook, db)
+		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(removeCookFromMealData.MealId, jwtPayload.UserId, roles.CanForceMealPreferenceAndCooking, db)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 			return

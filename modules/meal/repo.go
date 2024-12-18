@@ -39,6 +39,37 @@ func AddAllGroupMembersAsParticipantsWithTransaction(mealId string, groupId stri
 
 }
 
+func AddMemberToAllOpenMealsWithTransaction(userId string, groupId string, tx *sql.Tx) error {
+	query := `
+		INSERT INTO Meal_Prefrences(meal_id, user_id, preference, created_at)
+		SELECT m.meal_id, $1, 'undecided', NOW()
+		FROM meals
+		WHERE m.group_id = $2
+  			AND NOT m.closed
+  			AND NOT m.fulfilled
+		AND NOT EXISTS (
+            SELECT 1 FROM meal_preferences mp
+            WHERE mp.meal_id = m.meal_id
+            AND mp.user_id = $1
+    	);
+`
+	_, err := tx.Exec(query, userId, groupId)
+	return err
+}
+
+func RemovePreferencesInOpenMealsInGroup(userId string, groupId string, tx *sql.Tx) error {
+	query := `
+		DELETE FROM Meal_Prefrences mp
+		LEFT JOIN Meals m ON m.meal_id = mp.meal_id
+		WHERE mp.group_id = $2
+		AND mp.user_id = $1
+  			AND NOT m.closed
+  			AND NOT m.fulfilled
+`
+	_, err := tx.Exec(query, userId, groupId)
+	return err
+}
+
 func DeleteMealInDB(mealId string, db *sql.DB) error {
 	query := `DELETE FROM meals WHERE meal_id=$1`
 	_, err := db.Exec(query, mealId)
