@@ -39,13 +39,13 @@ func KickUserFromGroup(c *gin.Context, db *sql.DB) {
 		c.JSON(http.StatusBadRequest, ManagementError{Error: "You can't kick yourself"})
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformAction(kickUserData.GroupId, jwtPayload.UserId, roles.CanKickUsers, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformAction(kickUserData.GroupId, jwtPayload.UserId, roles.CanKickUsers, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ManagementError{Error: "Internal server error"})
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, ManagementError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, ManagementError{Error: "You are not allowed to perform this action"})
 	}
 
 	err = KickUSerFromGroupInDB(kickUserData.GroupId, kickUserData.UserId, db)
@@ -89,13 +89,13 @@ func BanUserFromGroup(c *gin.Context, db *sql.DB) {
 		c.JSON(http.StatusBadRequest, ManagementError{Error: "You can't ban yourself"})
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformAction(kickUserData.GroupId, jwtPayload.UserId, roles.CanBanUsers, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformAction(kickUserData.GroupId, jwtPayload.UserId, roles.CanBanUsers, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ManagementError{Error: "Internal server error"})
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, ManagementError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, ManagementError{Error: "You are not allowed to perform this action"})
 	}
 
 	//TODO: either have a seperate function or a follow up, which adds the userId in a blacklist for this specific group
@@ -136,13 +136,13 @@ func UnbanUserFromGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformAction(kickUserData.GroupId, jwtPayload.UserId, roles.CanUnbanUser, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformAction(kickUserData.GroupId, jwtPayload.UserId, roles.CanUnbanUser, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ManagementError{Error: "Internal server error"})
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, ManagementError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, ManagementError{Error: "You are not allowed to perform this action"})
 	}
 
 	err = UnBanUserFromGroupInDB(kickUserData.GroupId, kickUserData.UserId, db)
@@ -187,13 +187,13 @@ func AddRoleToUser(c *gin.Context, db *sql.DB) {
 	}
 
 	action := "can_promote_to_" + role
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformAction(roleData.GroupId, jwtPayload.UserId, action, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformAction(roleData.GroupId, jwtPayload.UserId, action, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ManagementError{Error: "Internal server error"})
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, ManagementError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, ManagementError{Error: "You are not allowed to perform this action"})
 		return
 	}
 
@@ -239,13 +239,13 @@ func RemoveRoleFromUser(c *gin.Context, db *sql.DB) {
 	}
 
 	action := "can_demote_from_" + role
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformAction(roleData.GroupId, jwtPayload.UserId, action, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformAction(roleData.GroupId, jwtPayload.UserId, action, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ManagementError{Error: "Internal server error"})
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, ManagementError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, ManagementError{Error: "You are not allowed to perform this action"})
 		return
 	}
 

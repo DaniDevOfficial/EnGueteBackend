@@ -41,22 +41,86 @@ func CreateNewMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformAction(newMeal.GroupId, jwtPayload.UserId, roles.CanCreateMeal, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformAction(newMeal.GroupId, jwtPayload.UserId, roles.CanCreateMeal, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, MealError{Error: "You are not allowed to perform this action"})
+		return
 	}
 
-	mealId, err := CreateNewMealInDB(newMeal, jwtPayload.UserId, db)
+	tx, err := db.Begin()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
 	}
+
+	mealId, err := CreateNewMealInDBWithTransaction(newMeal, jwtPayload.UserId, tx)
+	if err != nil {
+		err = tx.Rollback()
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+
+	err = AddAllGroupMembersAsParticipantsWithTransaction(mealId, newMeal.GroupId, tx)
+	if err != nil {
+		err = tx.Rollback()
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		err = tx.Rollback()
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+
 	log.Println("New meal created with id:", mealId)
 	c.JSON(http.StatusCreated, ResponseNewMeal{MealId: mealId})
+}
+
+func GetMealById(c *gin.Context, db *sql.DB) {
+	mealId := c.Param("mealId")
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		return
+	}
+
+	isGroupMember, err := group.IsUserInGroupViaMealId(mealId, jwtPayload.UserId, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+	if !isGroupMember {
+		c.JSON(http.StatusForbidden, MealError{Error: "You are not allowed to perform this action"})
+	}
+
+	mealInformation, err := GetSingularMealInformation(mealId, jwtPayload.UserId, db)
+	if err != nil {
+		if errors.Is(err, ErrNoData) {
+			c.JSON(http.StatusNotFound, MealError{Error: "Meal Not found"})
+		}
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+
+	participationInformation, err := GetMealParticipationInformationFromDB(mealId, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+
+	meal := Meal{
+		MealInformation:            mealInformation,
+		MealParticipantInformation: participationInformation,
+	}
+	c.JSON(http.StatusOK, meal)
 }
 
 // DeleteMeal godoc
@@ -72,7 +136,6 @@ func CreateNewMeal(c *gin.Context, db *sql.DB) {
 // @Failure 401 {object} MealError "Unauthorized user or insufficient permissions"
 // @Failure 500 {object} MealError "Internal server error"
 // @Router /meals/{mealId} [delete]
-
 func DeleteMeal(c *gin.Context, db *sql.DB) {
 	mealId := c.Param("mealId")
 	if mealId == "" {
@@ -86,13 +149,13 @@ func DeleteMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(mealId, jwtPayload.UserId, roles.CanDeleteMeal, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(mealId, jwtPayload.UserId, roles.CanDeleteMeal, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, MealError{Error: "You are not allowed to perform this action"})
 	}
 
 	err = DeleteMealInDB(mealId, db)
@@ -101,8 +164,7 @@ func DeleteMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// here we dont se
-	//nd a update, because the user will be redirected to the all page, where a api request will happen regardeless
+	// here we dont send a update, because the user will be redirected to the all page, where a api request will happen regardeless
 	c.JSON(http.StatusOK, MealSuccess{Message: "Meal Sucessfuly deleted"})
 }
 
@@ -119,7 +181,7 @@ func DeleteMeal(c *gin.Context, db *sql.DB) {
 // @Failure 401 {object} MealError "Unauthorized"
 // @Failure 500 {object} MealError "Internal server error"
 // @Router /meals/open [post]
-func ChangeMealClosedFlag(c *gin.Context, db *sql.DB) {
+func ChangeMealClosedFlag(c *gin.Context, db *sql.DB) { //TODO: Functionality of this needs to be rew
 	var updateClosedFlag RequestUpdateClosedFlag
 	if c.ShouldBindJSON(&updateClosedFlag) != nil {
 		c.JSON(http.StatusBadRequest, MealError{Error: "Invalid request body"})
@@ -132,13 +194,13 @@ func ChangeMealClosedFlag(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(updateClosedFlag.MealId, jwtPayload.UserId, roles.CanChangeMealFlags, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(updateClosedFlag.MealId, jwtPayload.UserId, roles.CanChangeMealFlags, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, MealError{Error: "You are not allowed to perform this action"})
 	}
 
 	err = UpdateClosedBoolInDB(updateClosedFlag.MealId, updateClosedFlag.CloseFlag, db)
@@ -178,13 +240,13 @@ func ChangeMealFulfilledFlag(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(updateFulfilledFlag.MealId, jwtPayload.UserId, roles.CanChangeMealFlags, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(updateFulfilledFlag.MealId, jwtPayload.UserId, roles.CanChangeMealFlags, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, MealError{Error: "You are not allowed to perform this action"})
 	}
 
 	err = UpdateMealFulfilledStatus(updateFulfilledFlag.MealId, updateFulfilledFlag.Fulfilled, db)
@@ -232,20 +294,20 @@ func OptInMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !isGroupMember {
-		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		c.JSON(http.StatusForbidden, MealError{Error: "Unauthorized"})
 		return
 	}
 	if !isSelfAction {
-		canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(requestOptInMeal.MealId, jwtPayload.UserId, roles.CanForceOptIn, db)
+		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(requestOptInMeal.MealId, jwtPayload.UserId, roles.CanForceMealPreferenceAndCooking, db)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 			return
 		}
 		if !canPerformAction {
-			c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
+			c.JSON(http.StatusForbidden, MealError{Error: "You are not allowed to perform this action"})
 		}
 	}
-  
+
 	err = OptInMealInDB(jwtPayload.UserId, requestOptInMeal, db)
 	if err != nil {
 		if errors.Is(err, ErrDataCouldNotBeUpdated) {
@@ -297,17 +359,17 @@ func ChangeOptInMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !isGroupMember {
-		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		c.JSON(http.StatusForbidden, MealError{Error: "Forbidden"})
 		return
 	}
 	if !isSelfAction {
-		canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(requestOptInMeal.MealId, jwtPayload.UserId, roles.CanForceOptIn, db)
+		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(requestOptInMeal.MealId, jwtPayload.UserId, roles.CanForceMealPreferenceAndCooking, db)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 			return
 		}
 		if !canPerformAction {
-			c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
+			c.JSON(http.StatusForbidden, MealError{Error: "You are not allowed to perform this action"})
 		}
 	}
 
@@ -364,20 +426,19 @@ func AddCookToMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !isGroupMember {
-		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		c.JSON(http.StatusForbidden, MealError{Error: "Unauthorized"})
 		return
 	}
 	if !isSelfAdd {
-		canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(addCookToMealData.MealId, jwtPayload.UserId, roles.CanForceAddCook, db)
+		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(addCookToMealData.MealId, jwtPayload.UserId, roles.CanForceMealPreferenceAndCooking, db)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 			return
 		}
 		if !canPerformAction {
-			c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
+			c.JSON(http.StatusForbidden, MealError{Error: "You are not allowed to perform this action"})
 		}
 	}
-
 
 	err = AddCookToMealInDB(addCookToMealData.UserId, addCookToMealData.UserId, db)
 	if err != nil {
@@ -428,25 +489,24 @@ func RemoveCookFromMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !isGroupMember {
-		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		c.JSON(http.StatusForbidden, MealError{Error: "Forbidden"})
 		return
 	}
 	if !isSelfAction {
-		canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(removeCookFromMealData.MealId, jwtPayload.UserId, roles.CanForceAddCook, db)
+		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(removeCookFromMealData.MealId, jwtPayload.UserId, roles.CanForceMealPreferenceAndCooking, db)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 			return
 		}
 		if !canPerformAction {
-			c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
+			c.JSON(http.StatusForbidden, MealError{Error: "You are not allowed to perform this action"})
 		}
 	}
-
 
 	err = RemoveCookFromMealInDB(removeCookFromMealData.UserId, removeCookFromMealData.MealId, db)
 	if err != nil {
 		if errors.Is(err, ErrUserWasntACook) {
-			c.JSON(http.StatusUnauthorized, MealError{Error: "User was not a cook"})
+			c.JSON(http.StatusBadRequest, MealError{Error: "User was not a cook"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
@@ -489,13 +549,13 @@ func UpdateMealTitle(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newTitle.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newTitle.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, MealError{Error: "You are not allowed to perform this action"})
 	}
 
 	err = UpdateMealTitleIdDB(newTitle.MealId, newTitle.NewTitle, db)
@@ -534,19 +594,15 @@ func UpdateMealType(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newType.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newType.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, MealError{Error: "You are not allowed to perform this action"})
 	}
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
-		return
-	}
 	//TODO: Send an updated meal information to the frontend
 	c.JSON(http.StatusOK, MealSuccess{Message: "Meal updated successfully"})
 }
@@ -577,13 +633,13 @@ func UpdateMealNotes(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newNotes.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newNotes.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, MealError{Error: "You are not allowed to perform this action"})
 	}
 
 	err = UpdateMealNotesInDB(newNotes.MealId, newNotes.NewNotes, db)
@@ -622,13 +678,13 @@ func UpdateMealScheduledAt(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	canPerformAction, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newScheduledAt.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
+	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newScheduledAt.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusUnauthorized, MealError{Error: "You are not allowed to perform this action"})
+		c.JSON(http.StatusForbidden, MealError{Error: "You are not allowed to perform this action"})
 	}
 
 	err = UpdateMealScheduledAtInDB(newScheduledAt.MealId, newScheduledAt.NewScheduledAt, db)

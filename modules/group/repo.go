@@ -3,6 +3,7 @@ package group
 import (
 	"database/sql"
 	"errors"
+	"github.com/lib/pq"
 	"time"
 )
 
@@ -36,15 +37,16 @@ func AddUserToGroupInDB(groupId string, userId string, db *sql.DB) (bool, error)
 	return result, err
 }
 
-func AddUserToGroupWithTransaction(groupId string, userId string, tx *sql.Tx) error {
-	query := `INSERT INTO user_groups (group_id, user_id) VALUES ($1, $2)`
-	_, err := tx.Exec(query, groupId, userId)
-	return err
+func AddUserToGroupWithTransaction(groupId string, userId string, tx *sql.Tx) (string, error) {
+	query := `INSERT INTO user_groups (group_id, user_id) VALUES ($1, $2) RETURNING user_group_id`
+	var userGroupId string
+	err := tx.QueryRow(query, groupId, userId).Scan(&userGroupId)
+	return userGroupId, err
 }
 
-func AddRoleToUserInGroupWithTransaction(groupId string, userId string, role string, tx *sql.Tx) error {
-	query := `INSERT INTO user_group_roles (group_id, user_id, role) VALUES ($1, $2, $3)`
-	_, err := tx.Exec(query, groupId, userId, role)
+func AddRoleToUserInGroupWithTransaction(groupId string, userId string, role string, userGroupId string, tx *sql.Tx) error {
+	query := `INSERT INTO user_group_roles (group_id, user_id, role, user_groups_id) VALUES ($1, $2, $3, $4)`
+	_, err := tx.Exec(query, groupId, userId, role, userGroupId)
 	return err
 }
 
@@ -52,6 +54,125 @@ func AddRoleToUserInGroup(groupId string, userId string, role string, db *sql.DB
 	query := `INSERT INTO user_group_roles (group_id, user_id, role) VALUES ($1, $2, $3)`
 	_, err := db.Exec(query, groupId, userId, role)
 	return err
+}
+
+func GetGroupInformationFromDb(groupId string, userId string, db *sql.DB) (GroupInfo, error) {
+	query := `
+	SELECT
+	    g.group_id,
+	    g.group_name,
+		COUNT(DISTINCT ug.user_id) AS user_count,
+	    ARRAY_AGG(ur.role) AS user_roles
+	FROM groups g 
+	LEFT JOIN user_groups ug ON ug.group_id = g.group_id
+	LEFT JOIN user_group_roles ur ON ur.group_id = g.group_id AND ur.user_id = $2
+	WHERE g.group_id = $1
+	GROUP BY g.group_id
+`
+
+	var info GroupInfo
+	var userRoles pq.StringArray
+
+	if err := db.QueryRow(query, groupId, userId).Scan(&info.GroupId, &info.GroupName, &info.UserCount, &userRoles); err != nil {
+		return info, err
+	}
+
+	info.UserRoles = userRoles
+	return info, nil
+}
+
+func GetGroupMembersFromDb(groupId string, db *sql.DB) ([]Member, error) {
+	query := `
+		SELECT 
+    		u.username,
+    		u.user_id,
+    		ARRAY_AGG(ur.role) AS user_roles
+		FROM user_groups ug
+		LEFT JOIN users u ON ug.user_id = u.user_id
+		LEFT JOIN user_group_roles ur ON ur.group_id = ug.group_id AND ur.user_id = u.user_id
+		WHERE ug.group_id = $1
+		GROUP BY u.username, u.user_id;
+`
+	rows, err := db.Query(query, groupId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []Member{}, nil
+		}
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var members []Member
+	for rows.Next() {
+		var member Member
+		var userRoles pq.StringArray
+
+		err = rows.Scan(&member.Username, &member.UserId, &userRoles)
+		if err != nil {
+			return nil, err
+		}
+		member.UserRoles = userRoles
+		members = append(members, member)
+	}
+
+	return members, nil
+}
+
+func GetMealsInGroupDB(groupId string, userId string, db *sql.DB) ([]MealCard, error) {
+	query := `
+        SELECT 
+            m.meal_id,
+            m.title,
+            m.closed,
+            m.fulfilled,
+            m.date_time,
+            m.meal_type,
+            m.notes,
+            COUNT(CASE WHEN mp.preference = 'opt-in' OR mp.preference = 'eat later' THEN 1 END) AS participant_count,
+            COALESCE(user_pref.preference, 'none') AS user_preference,
+            CASE WHEN mc.user_id IS NOT NULL THEN true ELSE false END AS is_cook
+        FROM meals m
+        LEFT JOIN meal_preferences mp ON mp.meal_id = m.meal_id
+        LEFT JOIN meal_preferences user_pref ON user_pref.meal_id = m.meal_id AND user_pref.user_id = $2
+        LEFT JOIN meal_cooks mc ON mc.meal_id = m.meal_id AND mc.user_id = $2
+        WHERE m.group_id = $1
+        GROUP BY m.meal_id, user_pref.preference, mc.user_id
+        ORDER BY m.date_time desc 
+`
+	rows, err := db.Query(query, groupId, userId)
+	var mealCards []MealCard
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return mealCards, nil
+		}
+		return mealCards, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var mealCard MealCard
+		err := rows.Scan(
+			&mealCard.MealId,
+			&mealCard.Title,
+			&mealCard.Closed,
+			&mealCard.Fulfilled,
+			&mealCard.DateTime,
+			&mealCard.MealType,
+			&mealCard.Notes,
+			&mealCard.ParticipantCount,
+			&mealCard.UserPreference,
+			&mealCard.IsCook,
+		)
+		if err != nil {
+			return mealCards, err
+		}
+		mealCards = append(mealCards, mealCard)
+	}
+
+	return mealCards, nil
+
 }
 
 var ErrNothingHappened = errors.New("nothing happened")
@@ -227,14 +348,14 @@ func VoidInviteTokenIfAllowedInDB(inviteToken string, userId string, db *sql.DB)
 
 var ErrNoMatchingGroupOrUser = errors.New("no matching group or user found for deletion")
 
-func LeaveGroupInDB(groupId string, userId string, db *sql.DB) error {
+func LeaveGroupInDB(groupId string, userId string, tx *sql.Tx) error {
 	query := `
 		DELETE FROM user_groups
 		WHERE group_id = $1
 		AND user_id = $2
 	`
 
-	result, err := db.Exec(query, groupId, userId)
+	result, err := tx.Exec(query, groupId, userId)
 	if err != nil {
 		return err
 	}
@@ -249,4 +370,35 @@ func LeaveGroupInDB(groupId string, userId string, db *sql.DB) error {
 	}
 
 	return nil
+}
+
+func RemovePreferencesInOpenMealsInGroup(userId string, groupId string, tx *sql.Tx) error {
+	query := `
+		DELETE FROM Meal_Prefrences mp
+		LEFT JOIN Meals m ON m.meal_id = mp.meal_id
+		WHERE mp.group_id = $2
+		AND mp.user_id = $1
+  			AND NOT m.closed
+  			AND NOT m.fulfilled
+`
+	_, err := tx.Exec(query, userId, groupId)
+	return err
+}
+
+func AddMemberToAllOpenMealsWithTransaction(userId string, groupId string, tx *sql.Tx) error {
+	query := `
+		INSERT INTO Meal_Prefrences(meal_id, user_id, preference, created_at)
+		SELECT m.meal_id, $1, 'undecided', NOW()
+		FROM meals
+		WHERE m.group_id = $2
+  			AND NOT m.closed
+  			AND NOT m.fulfilled
+		AND NOT EXISTS (
+            SELECT 1 FROM meal_preferences mp
+            WHERE mp.meal_id = m.meal_id
+            AND mp.user_id = $1
+    	);
+`
+	_, err := tx.Exec(query, userId, groupId)
+	return err
 }

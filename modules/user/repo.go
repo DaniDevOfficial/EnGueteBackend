@@ -3,6 +3,7 @@ package user
 import (
 	"database/sql"
 	"errors"
+	"log"
 )
 
 func GetUserIdByName(username string, db *sql.DB) (string, error) {
@@ -52,31 +53,35 @@ func GetUserByIdFromDB(userId string, db *sql.DB) (UserFromDB, error) {
 
 func GetUsersGroupByUserIdFromDB(userId string, db *sql.DB) ([]GroupCard, error) {
 
-	query := `SELECT
-    			g.group_id,
-    			g.group_name,
-    			COUNT(ug.user_id) as user_count
-    		FROM
-    		    groups g
-    		LEFT JOIN 
-			    user_groups ug ON g.group_id = ug.group_id
-			LEFT JOIN 
-    		        users u ON ug.user_id = u.user_id
-    		GROUP BY
-    			g.group_id
-    		WHERE 
-        		u.user_id = $1`
+	query := `
+		SELECT
+			g.group_id,
+			g.group_name,
+			COUNT(DISTINCT ug.user_id) AS user_count
+		FROM
+			groups g
+		LEFT JOIN 
+			user_groups ug ON g.group_id = ug.group_id
+		LEFT JOIN 
+			users u ON ug.user_id = u.user_id
+		WHERE 
+			u.user_id = $1
+		GROUP BY
+			g.group_id
+	`
 	rows, err := db.Query(query, userId)
 	var userGroups []GroupCard
+	if err != nil {
+		log.Println(err)
+		return userGroups, err
+	}
+
 	defer func(rows *sql.Rows) {
 		err := rows.Close()
 		if err != nil {
 
 		}
 	}(rows)
-	if err != nil {
-		return userGroups, err
-	}
 
 	for rows.Next() {
 		var thisUserGroup GroupCard

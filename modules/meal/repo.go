@@ -9,7 +9,7 @@ import (
 
 //General
 
-func CreateNewMealInDB(newMeal RequestNewMeal, userId string, db *sql.DB) (string, error) {
+func CreateNewMealInDBWithTransaction(newMeal RequestNewMeal, userId string, db *sql.Tx) (string, error) {
 	query := `INSERT INTO meals
 				(title, notes, date_time, meal_type, created_by, group_id)
 			VALUES
@@ -22,15 +22,136 @@ func CreateNewMealInDB(newMeal RequestNewMeal, userId string, db *sql.DB) (strin
 	return mealId, err
 }
 
+func AddAllGroupMembersAsParticipantsWithTransaction(mealId string, groupId string, tx *sql.Tx) error {
+	query := `
+	    INSERT INTO meal_preferences (meal_id, user_id, preference, created_at)
+        SELECT $1, ug.user_id, 'undecided', NOW()
+        FROM user_groups ug
+        WHERE ug.group_id = $2
+          AND NOT EXISTS (
+            SELECT 1 FROM meal_preferences mp
+            WHERE mp.meal_id = $1
+            AND mp.user_id = ug.user_id
+          );	
+`
+	_, err := tx.Exec(query, mealId, groupId)
+	return err
+
+}
+
+func AddMemberToAllOpenMealsWithTransaction(userId string, groupId string, tx *sql.Tx) error {
+	query := `
+		INSERT INTO Meal_Prefrences(meal_id, user_id, preference, created_at)
+		SELECT m.meal_id, $1, 'undecided', NOW()
+		FROM meals
+		WHERE m.group_id = $2
+  			AND NOT m.closed
+  			AND NOT m.fulfilled
+		AND NOT EXISTS (
+            SELECT 1 FROM meal_preferences mp
+            WHERE mp.meal_id = m.meal_id
+            AND mp.user_id = $1
+    	);
+`
+	_, err := tx.Exec(query, userId, groupId)
+	return err
+}
+
 func DeleteMealInDB(mealId string, db *sql.DB) error {
 	query := `DELETE FROM meals WHERE meal_id=$1`
 	_, err := db.Exec(query, mealId)
 	return err
 }
 
+var ErrNoData = errors.New("no data found")
+
+func GetSingularMealInformation(mealId string, userId string, db *sql.DB) (MealInformation, error) {
+	query := `
+        SELECT 
+            m.meal_id,
+            m.title,
+            m.closed,
+            m.fulfilled,
+            m.date_time,
+            m.meal_type,
+            m.notes,
+            COUNT(CASE WHEN mp.preference = 'opt-in' OR mp.preference = 'eat later' THEN 1 END) AS participant_count,
+            CASE WHEN mc.user_id IS NOT NULL THEN true ELSE false END AS is_cook
+        FROM meals m
+        LEFT JOIN meal_preferences mp ON mp.meal_id = m.meal_id
+        LEFT JOIN meal_cooks mc ON mc.meal_id = m.meal_id
+        WHERE m.meal_id = $1
+        GROUP BY m.meal_id, mc.user_id
+        ORDER BY m.date_time
+`
+	var mealInformation MealInformation
+	err := db.QueryRow(query, mealId).Scan(
+		&mealInformation.MealID,
+		&mealInformation.Title,
+		&mealInformation.Closed,
+		&mealInformation.Fulfilled,
+		&mealInformation.DateTime,
+		&mealInformation.MealType,
+		&mealInformation.Notes,
+		&mealInformation.ParticipantCount,
+		&mealInformation.IsCook,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return mealInformation, ErrNoData
+		}
+		return mealInformation, err
+	}
+
+	return mealInformation, nil
+}
+
+func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealParticipant, error) {
+	query := `
+		SELECT 
+    		u.username,
+    		u.user_id,
+    		COALESCE(mp.preference, 'undecided') AS preference,
+    		CASE
+        		WHEN mc.user_id IS NOT NULL THEN TRUE
+        		ELSE FALSE
+    		END AS is_cook
+		FROM users u
+		LEFT JOIN meal_preferences mp ON u.user_id = mp.user_id AND mp.meal_id = $1
+		LEFT JOIN meal_cooks mc ON u.user_id = mc.user_id AND mc.meal_id = $1
+		WHERE mp.meal_id = $1 OR mc.meal_id = $1;
+`
+	rows, err := db.Query(query, mealId)
+	var mealParticipants []MealParticipant
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return mealParticipants, nil
+		}
+		return mealParticipants, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var mealParticipant MealParticipant
+		err := rows.Scan(
+			&mealParticipant.Username,
+			&mealParticipant.UserId,
+			&mealParticipant.Preference,
+			&mealParticipant.IsCook,
+		)
+		if err != nil {
+			return mealParticipants, err
+		}
+		mealParticipants = append(mealParticipants, mealParticipant)
+
+	}
+	return mealParticipants, nil
+}
+
 var ErrUserAlreadyHasAPreferenceInSpecificMeal = errors.New("user already has A Preference")
 
 // Flags
+
 func UpdateClosedBoolInDB(mealId string, isClosed bool, db *sql.DB) error {
 	query := `UPDATE meals SET closed=$1 WHERE meal_id=$2 RETURNING closed` // TODO Swap the closed bool from what it currently is
 	var tmp bool
