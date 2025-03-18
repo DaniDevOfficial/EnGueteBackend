@@ -88,22 +88,21 @@ func VerifyRefreshToken(tokenString string, db *sql.DB) (JWTPayload, error) {
 }
 
 func VerifyRefreshTokenInDB(token string, userId string, db *sql.DB) (bool, error) {
-
 	var count int64
+
 	query := `
-		SELECT 
-			COUNT(*)
+		SELECT COUNT(*)
 		FROM refresh_tokens
 		WHERE refresh_token = ?
 		AND user_id = ?
-`
-	result, err := db.Exec(query, token, userId)
+	`
+
+	err := db.QueryRow(query, token, userId).Scan(&count)
 	if err != nil {
 		return false, err
 	}
 
-	//TODO: check for result
-	return true, nil
+	return count > 0, nil
 }
 
 func CreateRefreshToken(userData JWTUser, isTimeBased bool, db *sql.DB) (string, error) {

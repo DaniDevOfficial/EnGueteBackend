@@ -30,7 +30,7 @@ func KickUserFromGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, ManagementError{Error: "Unauthorized"})
 		return
@@ -79,7 +79,7 @@ func BanUserFromGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, ManagementError{Error: "Unauthorized"})
 		return
@@ -130,7 +130,7 @@ func UnbanUserFromGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, ManagementError{Error: "Unauthorized"})
 		return
@@ -180,7 +180,7 @@ func AddRoleToUser(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, ManagementError{Error: "Unauthorized"})
 		return
@@ -232,7 +232,7 @@ func RemoveRoleFromUser(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, ManagementError{Error: "Unauthorized"})
 		return

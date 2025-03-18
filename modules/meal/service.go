@@ -35,7 +35,7 @@ func CreateNewMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
@@ -86,7 +86,7 @@ func CreateNewMeal(c *gin.Context, db *sql.DB) {
 func GetMealById(c *gin.Context, db *sql.DB) {
 	mealId := c.Param("mealId")
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
@@ -143,7 +143,7 @@ func DeleteMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
@@ -188,7 +188,7 @@ func ChangeMealClosedFlag(c *gin.Context, db *sql.DB) { //TODO: Functionality of
 		return
 	}
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
@@ -234,7 +234,7 @@ func ChangeMealFulfilledFlag(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
@@ -281,7 +281,7 @@ func OptInMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
@@ -346,7 +346,7 @@ func ChangeOptInMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
@@ -412,7 +412,7 @@ func AddCookToMeal(c *gin.Context, db *sql.DB) {
 		c.JSON(http.StatusBadRequest, MealError{Error: "Invalid request body"})
 		return
 	}
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
@@ -475,7 +475,7 @@ func RemoveCookFromMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
@@ -543,7 +543,7 @@ func UpdateMealTitle(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
@@ -588,7 +588,7 @@ func UpdateMealType(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
@@ -627,7 +627,7 @@ func UpdateMealNotes(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return
@@ -672,7 +672,7 @@ func UpdateMealScheduledAt(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
 		return

@@ -131,16 +131,23 @@ func SignIn(c *gin.Context, db *sql.DB) {
 		Username: userData.Username,
 		UserId:   userData.UserId,
 	}
+
+	refreshToken, err := jwt.CreateRefreshToken(jwtUserData, false, db)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Error creating JWT"})
+		return
+	}
+
 	jwtToken, err := jwt.CreateToken(jwtUserData)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Error creating JWT"})
 		return
 	}
 
-	response := jwt.JWTTokenResponse{
-		Token: jwtToken,
-	}
-	c.JSON(http.StatusOK, response)
+	c.Writer.Header().Set("Authorization", jwtToken)
+	c.Writer.Header().Set("RefreshToken", refreshToken)
+
+	c.JSON(http.StatusOK, MessageResponse{Message: "Sign in successfully"})
 }
 
 // GetUserInformationById godoc
@@ -157,7 +164,7 @@ func SignIn(c *gin.Context, db *sql.DB) {
 // @Router /users/{userId} [get]
 func GetUserInformationById(c *gin.Context, db *sql.DB) {
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusUnauthorized, UserError{Error: "Error getting JWT Payload"})
@@ -241,7 +248,7 @@ func GetUserGroupsById(c *gin.Context, db *sql.DB) {
 // @Router /users [delete]
 func DeleteUserWithJWT(c *gin.Context, db *sql.DB) {
 
-	decodedJWT, err := auth.GetJWTPayloadFromHeader(c)
+	decodedJWT, err := auth.GetJWTPayloadFromHeader(c, db)
 
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, UserError{Error: "JWT Token is not valid"})
@@ -286,7 +293,7 @@ func UpdateUsername(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	jwtTokenData, err := auth.GetJWTPayloadFromHeader(c)
+	jwtTokenData, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		return
 	}
@@ -338,7 +345,7 @@ func UpdateUserPassword(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, UserError{Error: "JWT Token is not valid"})
 		return

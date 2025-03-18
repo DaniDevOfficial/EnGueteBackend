@@ -66,3 +66,7 @@ type UserGroupsFromDB struct {
 	groupName string
 	groupId   string
 }
+
+type MessageResponse struct {
+	Message string `json:"message"`
+}
