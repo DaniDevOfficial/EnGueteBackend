@@ -7,7 +7,6 @@ import (
 	"enguete/modules/management"
 	"enguete/modules/meal"
 	"enguete/modules/user"
-	"enguete/util/auth"
 	"enguete/util/db"
 	"enguete/util/validator"
 	"fmt"
@@ -48,7 +47,7 @@ func corsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, RefreshToken")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		if c.Request.Method == "OPTIONS" {
@@ -58,12 +57,6 @@ func corsMiddleware() gin.HandlerFunc {
 		}
 
 		log.Println("New Request Started")
-		jwt, err := auth.GetJWTPayloadFromHeader(c)
-		if err == nil {
-			log.Printf("Request made by: %v\n", jwt)
-		} else {
-			log.Println("Request made by: Anonymous")
-		}
 		log.Printf("Method: %s, Path: %s\n", c.Request.Method, c.Request.URL.Path)
 
 		c.Next()
