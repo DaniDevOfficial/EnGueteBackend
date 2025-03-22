@@ -12,7 +12,7 @@ CREATE TABLE users
 );
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (
-                                               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     refresh_token VARCHAR(255) NOT NULL,
     life_time TIMESTAMPTZ DEFAULT NULL,

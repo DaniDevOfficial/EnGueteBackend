@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -135,6 +136,7 @@ func CreateRefreshToken(userData JWTUser, isTimeBased bool, db *sql.DB) (string,
 	}
 	err = PushRefreshTokenToDB(data, db)
 	if err != nil {
+		log.Println(err)
 		return "", err
 	}
 	return tokenString, nil
@@ -166,10 +168,11 @@ func PushRefreshTokenToDB(data NewRefreshTokenDataDB, db *sql.DB) error {
 		data.LifeTime = nil
 	}
 	sqlString := `
-	INSERT INTO refreshTokens 
-	SET (user_id, refreshToken)
-	VALUES (?, ?)
+	INSERT INTO refresh_tokens 
+	(user_id, refresh_Token) 
+	VALUES ($1, $2)
 `
+	log.Println(data)
 	_, err := db.Exec(sqlString, data.UserId, data.RefreshToken)
 
 	return err

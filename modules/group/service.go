@@ -101,7 +101,6 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 func GetGroupById(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
-		log.Println(err)
 		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Authorization is not valid"})
 		return
 	}
@@ -110,7 +109,6 @@ func GetGroupById(c *gin.Context, db *sql.DB) {
 
 	inDB, err := IsUserInGroup(groupId, jwtPayload.UserId, db)
 	if err != nil {
-		log.Println(err)
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server error"})
 		return
 	}

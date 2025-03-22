@@ -56,3 +56,10 @@ type Member struct {
 	UserId    string   `json:"userId"`
 	UserRoles []string `json:"userRoles"`
 }
+
+type FilterGroupRequest struct {
+	GroupId     string `json:"groupId" binding:"required"`
+	IsFulfilled int    `form:"isFulfilled"`
+	IsOpen      int    `form:"isOpen"`
+	WeekFilter  string `json:"weekFilter" binding:"dateTime"`
+}

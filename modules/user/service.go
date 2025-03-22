@@ -84,15 +84,24 @@ func CreateNewUser(c *gin.Context, db *sql.DB) {
 		Username: userInDB.username,
 		UserId:   newUserId,
 	}
-	jwtToken, err := jwt.CreateToken(jwtUserData)
+
+	refreshToken, err := jwt.CreateRefreshToken(jwtUserData, false, db)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating JWT"})
+		log.Println(err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Error creating RefreshToken"})
 		return
 	}
-	response := jwt.JWTTokenResponse{
-		Token: jwtToken,
+
+	jwtToken, err := jwt.CreateToken(jwtUserData)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Error creating JWT"})
+		return
 	}
-	c.JSON(http.StatusCreated, response)
+
+	c.Header("Authorization", jwtToken)
+	c.Header("RefreshToken", refreshToken)
+
+	c.JSON(http.StatusOK, MessageResponse{Message: "Sign up successfully"})
 }
 
 // SignIn godoc
@@ -134,7 +143,8 @@ func SignIn(c *gin.Context, db *sql.DB) {
 
 	refreshToken, err := jwt.CreateRefreshToken(jwtUserData, false, db)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Error creating JWT"})
+		log.Println(err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Error creating RefreshToken"})
 		return
 	}
 
@@ -143,9 +153,8 @@ func SignIn(c *gin.Context, db *sql.DB) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Error creating JWT"})
 		return
 	}
-
-	c.Writer.Header().Set("Authorization", jwtToken)
-	c.Writer.Header().Set("RefreshToken", refreshToken)
+	c.Header("Authorization", jwtToken)
+	c.Header("RefreshToken", refreshToken)
 
 	c.JSON(http.StatusOK, MessageResponse{Message: "Sign in successfully"})
 }
