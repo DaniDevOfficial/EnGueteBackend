@@ -58,8 +58,10 @@ type Member struct {
 }
 
 type FilterGroupRequest struct {
-	GroupId     string `json:"groupId" binding:"required"`
+	GroupId     string `form:"groupId" binding:"required"`
 	IsFulfilled int    `form:"isFulfilled"`
 	IsOpen      int    `form:"isOpen"`
-	WeekFilter  string `json:"weekFilter" binding:"dateTime"`
+	WeekFilter  string `form:"weekFilter"`
+	AmICook     int    `form:"amICook"`
+	Preference  string `form:"preference"`
 }

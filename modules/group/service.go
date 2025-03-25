@@ -105,9 +105,13 @@ func GetGroupById(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	groupId := c.Param("groupId")
+	var filterRequest FilterGroupRequest
+	if err = c.ShouldBindQuery(&filterRequest); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Error decoding request"})
+		return
+	}
 
-	inDB, err := IsUserInGroup(groupId, jwtPayload.UserId, db)
+	inDB, err := IsUserInGroup(filterRequest.GroupId, jwtPayload.UserId, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server error"})
 		return
@@ -117,7 +121,7 @@ func GetGroupById(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	groupInformation, err := GetGroupInformationFromDb(groupId, jwtPayload.UserId, db)
+	groupInformation, err := GetGroupInformationFromDb(filterRequest.GroupId, jwtPayload.UserId, db)
 	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server error"})
@@ -125,7 +129,7 @@ func GetGroupById(c *gin.Context, db *sql.DB) {
 	}
 
 	groupInformation.UserRoleRights = roles.GetAllAllowedActionsForRoles(groupInformation.UserRoles)
-	mealCards, err := GetMealsInGroupDB(groupId, jwtPayload.UserId, db)
+	mealCards, err := GetMealsInGroupDB(filterRequest, jwtPayload.UserId, db)
 	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server Error"})

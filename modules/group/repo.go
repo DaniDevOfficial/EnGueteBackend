@@ -119,7 +119,7 @@ func GetGroupMembersFromDb(groupId string, db *sql.DB) ([]Member, error) {
 	return members, nil
 }
 
-func GetMealsInGroupDB(groupId string, userId string, db *sql.DB) ([]MealCard, error) {
+func GetMealsInGroupDB(filters FilterGroupRequest, userId string, db *sql.DB) ([]MealCard, error) {
 	query := `
         SELECT 
             m.meal_id,
@@ -140,7 +140,7 @@ func GetMealsInGroupDB(groupId string, userId string, db *sql.DB) ([]MealCard, e
         GROUP BY m.meal_id, user_pref.preference, mc.user_id
         ORDER BY m.date_time desc 
 `
-	rows, err := db.Query(query, groupId, userId)
+	rows, err := db.Query(query, filters.GroupId, userId)
 	var mealCards []MealCard
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

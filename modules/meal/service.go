@@ -84,7 +84,12 @@ func CreateNewMeal(c *gin.Context, db *sql.DB) {
 }
 
 func GetMealById(c *gin.Context, db *sql.DB) {
-	mealId := c.Param("mealId")
+	var mealInfo RequestMeal
+	if err := c.ShouldBindQuery(&mealInfo); err != nil {
+		log.Println(err)
+		c.JSON(http.StatusBadRequest, MealError{Error: "Invalid request body"})
+		return
+	}
 
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
@@ -92,16 +97,17 @@ func GetMealById(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	isGroupMember, err := group.IsUserInGroupViaMealId(mealId, jwtPayload.UserId, db)
+	isGroupMember, err := group.IsUserInGroupViaMealId(mealInfo.MealId, jwtPayload.UserId, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
 	}
 	if !isGroupMember {
 		c.JSON(http.StatusForbidden, MealError{Error: "You are not allowed to perform this action"})
+		return
 	}
 
-	mealInformation, err := GetSingularMealInformation(mealId, jwtPayload.UserId, db)
+	mealInformation, err := GetSingularMealInformation(mealInfo.MealId, jwtPayload.UserId, db)
 	if err != nil {
 		if errors.Is(err, ErrNoData) {
 			c.JSON(http.StatusNotFound, MealError{Error: "Meal Not found"})
@@ -110,7 +116,7 @@ func GetMealById(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	participationInformation, err := GetMealParticipationInformationFromDB(mealId, db)
+	participationInformation, err := GetMealParticipationInformationFromDB(mealInfo.MealId, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
