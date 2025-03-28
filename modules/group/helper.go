@@ -13,15 +13,15 @@ import (
 // return err => internal server error
 //
 // return false => user is not in group
-func IsUserInGroupViaMealId(mealId string, userId string, db *sql.DB) (bool, error) {
-	_, err := IsUserMemberOfGroupViaMealId(mealId, userId, db)
+func IsUserInGroupViaMealId(mealId string, userId string, db *sql.DB) (bool, string, error) {
+	groupId, err := IsUserMemberOfGroupViaMealId(mealId, userId, db)
 	if err != nil {
 		if errors.Is(err, ErrUserIsNotPartOfThisGroup) {
-			return false, nil // Not in group, but no internal error
+			return false, groupId, nil // Not in group, but no internal error
 		}
-		return false, err // Internal error occurred
+		return false, groupId, err // Internal error occurred
 	}
-	return true, nil // User is in group
+	return true, groupId, nil // User is in group
 }
 
 // IsUserInGroup Check if the target user is part of the group

@@ -32,10 +32,6 @@ func registerMealRoutes(router *gin.Engine, db *sql.DB) {
 }
 
 func registerOptInRoutes(router *gin.Engine, db *sql.DB) {
-	router.POST("/meals/optin", func(c *gin.Context) {
-		OptInMeal(c, db)
-	})
-
 	router.PUT("/meals/optin", func(c *gin.Context) {
 		ChangeOptInMeal(c, db)
 	})

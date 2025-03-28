@@ -189,17 +189,17 @@ func RemoveRoleFromUserInGroup(groupId string, userId string, role string, db *s
 
 var ErrUserIsNotPartOfThisGroup = errors.New("user is not part of this group")
 
-func IsUserMemberOfGroupViaMealId(mealId string, userId string, db *sql.DB) (int, error) {
+func IsUserMemberOfGroupViaMealId(mealId string, userId string, db *sql.DB) (string, error) {
 	query := `
 	SELECT 
-		1
+		g.group_id
 	FROM groups g
-	LEFT JOIN meals m ON m.group_id = g.group_id
-	LEFT JOIN user_groups gu ON gu.group_id = g.group_id
+	INNER JOIN meals m ON m.group_id = g.group_id
+	INNER JOIN user_groups gu ON gu.group_id = g.group_id
 	WHERE m.meal_id = $2
 	AND gu.user_id = $1
 `
-	var exists int
+	var exists string
 	err := db.QueryRow(query, userId, mealId).Scan(&exists)
 
 	if err != nil {

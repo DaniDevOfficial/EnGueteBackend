@@ -109,8 +109,8 @@ func GetSingularMealInformation(mealId string, userId string, db *sql.DB) (MealI
 func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealParticipant, error) {
 	query := `
 		SELECT 
-    		u.username,
     		u.user_id,
+    		u.username,
     		COALESCE(mp.preference, 'undecided') AS preference,
     		CASE
         		WHEN mc.user_id IS NOT NULL THEN TRUE
@@ -134,8 +134,8 @@ func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealPar
 	for rows.Next() {
 		var mealParticipant MealParticipant
 		err := rows.Scan(
-			&mealParticipant.Username,
 			&mealParticipant.UserId,
+			&mealParticipant.Username,
 			&mealParticipant.Preference,
 			&mealParticipant.IsCook,
 		)
@@ -146,6 +146,51 @@ func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealPar
 
 	}
 	return mealParticipants, nil
+}
+
+func GetGroupMembersNotParticipatingInMeal(mealId string, groupId string, db *sql.DB) ([]MealParticipant, error) {
+	query := `
+SELECT 
+    u.user_id,
+    u.username,
+    'undecided' AS preference,
+    false AS is_cook
+FROM user_groups ug
+INNER JOIN users u ON u.user_id = ug.user_id
+LEFT JOIN meal_preferences up 
+    ON up.user_id = u.user_id 
+    AND up.meal_id = $1
+WHERE ug.group_id = $2
+  AND up.user_id IS NULL
+GROUP BY u.user_id, u.username;
+
+`
+	rows, err := db.Query(query, mealId, groupId)
+	var mealParticipants []MealParticipant
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return mealParticipants, nil
+		}
+		return mealParticipants, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var mealParticipant MealParticipant
+		err := rows.Scan(
+			&mealParticipant.UserId,
+			&mealParticipant.Username,
+			&mealParticipant.Preference,
+			&mealParticipant.IsCook,
+		)
+		if err != nil {
+			return mealParticipants, err
+		}
+		mealParticipants = append(mealParticipants, mealParticipant)
+
+	}
+	return mealParticipants, nil
+
 }
 
 var ErrUserAlreadyHasAPreferenceInSpecificMeal = errors.New("user already has A Preference")
@@ -168,36 +213,17 @@ func UpdateMealFulfilledStatus(mealId string, isFulfilled bool, db *sql.DB) erro
 
 //OptIn Status
 
-func OptInMealInDB(userId string, optData RequestOptInMeal, db *sql.DB) error {
-	query := `
-	INSERT INTO meal_preferences
-	(meal_id, user_id, preference)
-	VALUES 
-	    ($1, $2, $3)`
-
-	_, err := db.Exec(query, optData.MealId, userId, optData.Preference)
-	if err != nil {
-		// Check for unique constraint violation using pq's error code
-		var pqErr *pq.Error
-		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
-			return ErrUserAlreadyHasAPreferenceInSpecificMeal
-		}
-		// Return other errors as is
-		return err
-	}
-	return err
-}
-
 func ChangeOptInStatusMealInDB(userId string, optData RequestOptInMeal, db *sql.DB) error {
 	query := `
-		UPDATE meal_preferences
-		SET preference = $1, changed_at = $2
-		WHERE meal_id = $3
-		AND user_id = $4
-		RETURNING meal_id`
+        INSERT INTO meal_preferences (meal_id, user_id, preference, last_updated)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (meal_id, user_id)
+        DO UPDATE 
+        SET preference = EXCLUDED.preference,
+            last_updated = EXCLUDED.last_updated;`
 
 	var updatedMealID string
-	err := db.QueryRow(query, optData.Preference, time.Now(), optData.MealId, userId).Scan(&updatedMealID)
+	err := db.QueryRow(query, optData.MealId, userId, optData.Preference, time.Now()).Scan(&updatedMealID)
 
 	if err != nil {
 		// Check for unique constraint violation using pq's error code
@@ -205,11 +231,9 @@ func ChangeOptInStatusMealInDB(userId string, optData RequestOptInMeal, db *sql.
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
 			return ErrUserAlreadyHasAPreferenceInSpecificMeal
 		}
-		// Return other errors as is
 		return err
 	}
 
-	// If we reach this point, the update was successful
 	return nil
 }
 
