@@ -51,35 +51,12 @@ func CreateNewMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	tx, err := db.Begin()
+	mealId, err := CreateNewMealInDBWithTransaction(newMeal, jwtPayload.UserId, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
 		return
 	}
 
-	mealId, err := CreateNewMealInDBWithTransaction(newMeal, jwtPayload.UserId, tx)
-	if err != nil {
-		err = tx.Rollback()
-		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
-		return
-	}
-
-	err = AddAllGroupMembersAsParticipantsWithTransaction(mealId, newMeal.GroupId, tx)
-	if err != nil {
-		err = tx.Rollback()
-		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
-
-		return
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		err = tx.Rollback()
-		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
-		return
-	}
-
-	log.Println("New meal created with id:", mealId)
 	c.JSON(http.StatusCreated, ResponseNewMeal{MealId: mealId})
 }
 
@@ -122,6 +99,7 @@ func GetMealById(c *gin.Context, db *sql.DB) {
 		return
 	}
 
+	//TODO: if meal is closed dont get this data and just say that the ones with a preference are sent back (this is so we have accurate historical data)
 	participationInformationWithoutPreference, err := GetGroupMembersNotParticipatingInMeal(mealInfo.MealId, groupId, db)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
