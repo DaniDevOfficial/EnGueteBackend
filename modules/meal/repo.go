@@ -9,7 +9,7 @@ import (
 
 //General
 
-func CreateNewMealInDBWithTransaction(newMeal RequestNewMeal, userId string, db *sql.Tx) (string, error) {
+func CreateNewMealInDBWithTransaction(newMeal RequestNewMeal, userId string, db *sql.DB) (string, error) {
 	query := `INSERT INTO meals
 				(title, notes, date_time, meal_type, created_by, group_id)
 			VALUES
@@ -20,41 +20,6 @@ func CreateNewMealInDBWithTransaction(newMeal RequestNewMeal, userId string, db 
 	var mealId string
 	err := row.Scan(&mealId)
 	return mealId, err
-}
-
-func AddAllGroupMembersAsParticipantsWithTransaction(mealId string, groupId string, tx *sql.Tx) error {
-	query := `
-	    INSERT INTO meal_preferences (meal_id, user_id, preference, created_at)
-        SELECT $1, ug.user_id, 'undecided', NOW()
-        FROM user_groups ug
-        WHERE ug.group_id = $2
-          AND NOT EXISTS (
-            SELECT 1 FROM meal_preferences mp
-            WHERE mp.meal_id = $1
-            AND mp.user_id = ug.user_id
-          );	
-`
-	_, err := tx.Exec(query, mealId, groupId)
-	return err
-
-}
-
-func AddMemberToAllOpenMealsWithTransaction(userId string, groupId string, tx *sql.Tx) error {
-	query := `
-		INSERT INTO Meal_Prefrences(meal_id, user_id, preference, created_at)
-		SELECT m.meal_id, $1, 'undecided', NOW()
-		FROM meals
-		WHERE m.group_id = $2
-  			AND NOT m.closed
-  			AND NOT m.fulfilled
-		AND NOT EXISTS (
-            SELECT 1 FROM meal_preferences mp
-            WHERE mp.meal_id = m.meal_id
-            AND mp.user_id = $1
-    	);
-`
-	_, err := tx.Exec(query, userId, groupId)
-	return err
 }
 
 func DeleteMealInDB(mealId string, db *sql.DB) error {

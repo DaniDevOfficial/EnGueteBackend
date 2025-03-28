@@ -130,7 +130,7 @@ func GetMealsInGroupDB(filters FilterGroupRequest, userId string, db *sql.DB) ([
             m.meal_type,
             m.notes,
             COUNT(CASE WHEN mp.preference = 'opt-in' OR mp.preference = 'eat later' THEN 1 END) AS participant_count,
-            COALESCE(user_pref.preference, 'none') AS user_preference,
+            COALESCE(user_pref.preference, 'undecided') AS user_preference,
             CASE WHEN mc.user_id IS NOT NULL THEN true ELSE false END AS is_cook
         FROM meals m
         LEFT JOIN meal_preferences mp ON mp.meal_id = m.meal_id
