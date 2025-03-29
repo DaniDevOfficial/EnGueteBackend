@@ -7,7 +7,6 @@ import (
 
 func RegisterMealRoute(router *gin.Engine, db *sql.DB) {
 	registerMealRoutes(router, db)
-	registerOptInRoutes(router, db)
 	registerMealUpdateRoutes(router, db)
 	registerMealCooksRoutes(router, db)
 }
@@ -31,9 +30,9 @@ func registerMealRoutes(router *gin.Engine, db *sql.DB) {
 
 }
 
-func registerOptInRoutes(router *gin.Engine, db *sql.DB) {
-	router.PUT("/meals/optin", func(c *gin.Context) {
-		ChangeOptInMeal(c, db)
+func registerPreferenceRoutes(router *gin.Engine, db *sql.DB) {
+	router.PUT("/meals/preferences", func(c *gin.Context) {
+		UpdatePreference(c, db)
 	})
 }
 

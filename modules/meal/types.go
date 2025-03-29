@@ -53,6 +53,14 @@ type RequestAddCookToMeal struct {
 	UserId string `json:"userId" binding:"required"`
 	MealId string `json:"mealId" binding:"required,uuid"`
 }
+
+type RequestUpdatePreference struct {
+	UserId     string  `json:"userId" binding:"required"`
+	MealId     string  `json:"mealId" binding:"required,uuid"`
+	Preference *string `json:"preference" binding:"required"`
+	IsCook     *bool   `json:"isCook" binding:"required"`
+}
+
 type RequestRemoveCook struct {
 	UserId string `json:"userId" binding:"required"`
 	MealId string `json:"mealId" binding:"required,uuid"`
@@ -75,8 +83,9 @@ type MealInformation struct {
 }
 
 type MealParticipant struct {
-	Username   string `json:"username"`
 	UserId     string `json:"userId"`
+	MealId     string `json:"mealId"`
+	Username   string `json:"username"`
 	Preference string `json:"preference"`
 	IsCook     bool   `json:"isCook"`
 }

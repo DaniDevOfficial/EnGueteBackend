@@ -75,6 +75,7 @@ func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealPar
 	query := `
 		SELECT 
     		u.user_id,
+    		$1 AS meal_id,
     		u.username,
     		COALESCE(mp.preference, 'undecided') AS preference,
     		CASE
@@ -100,6 +101,7 @@ func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealPar
 		var mealParticipant MealParticipant
 		err := rows.Scan(
 			&mealParticipant.UserId,
+			&mealParticipant.MealId,
 			&mealParticipant.Username,
 			&mealParticipant.Preference,
 			&mealParticipant.IsCook,
@@ -117,6 +119,7 @@ func GetGroupMembersNotParticipatingInMeal(mealId string, groupId string, db *sq
 	query := `
 SELECT 
     u.user_id,
+    $1 AS meal_id,
     u.username,
     'undecided' AS preference,
     false AS is_cook
@@ -144,6 +147,7 @@ GROUP BY u.user_id, u.username;
 		var mealParticipant MealParticipant
 		err := rows.Scan(
 			&mealParticipant.UserId,
+			&mealParticipant.MealId,
 			&mealParticipant.Username,
 			&mealParticipant.Preference,
 			&mealParticipant.IsCook,
@@ -178,7 +182,7 @@ func UpdateMealFulfilledStatus(mealId string, isFulfilled bool, db *sql.DB) erro
 
 //OptIn Status
 
-func ChangeOptInStatusMealInDB(userId string, optData RequestOptInMeal, db *sql.DB) error {
+func ChangeOptInStatusMealInDB(userId string, mealId string, preference string, db *sql.DB) error {
 	query := `
         INSERT INTO meal_preferences (meal_id, user_id, preference, last_updated)
         VALUES ($1, $2, $3, $4)
@@ -188,7 +192,7 @@ func ChangeOptInStatusMealInDB(userId string, optData RequestOptInMeal, db *sql.
             last_updated = EXCLUDED.last_updated;`
 
 	var updatedMealID string
-	err := db.QueryRow(query, optData.MealId, userId, optData.Preference, time.Now()).Scan(&updatedMealID)
+	err := db.QueryRow(query, mealId, userId, preference, time.Now()).Scan(&updatedMealID)
 
 	if err != nil {
 		// Check for unique constraint violation using pq's error code

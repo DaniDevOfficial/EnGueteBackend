@@ -252,71 +252,6 @@ func ChangeMealFulfilledFlag(c *gin.Context, db *sql.DB) {
 
 // Meal Status per user
 
-// ChangeOptInMeal godoc
-// @Summary Change Opt-in status in a meal
-// @Description Allows a user to change their opt-in status for a specific meal within a group. The requesting user must be a member of the group associated with the meal.
-// @Tags Meals
-// @Accept json
-// @Produce json
-// @Param Authorization header string true "Bearer token for authorization"
-// @Param requestOptInMeal body RequestOptInMeal true "Payload to change opt-in status in a meal"
-// @Success 200 {object} MealSuccess "User's opt-in status for the meal successfully changed"
-// @Failure 400 {object} MealError "Invalid request body or user already has a preference set for this meal"
-// @Failure 401 {object} MealError "Unauthorized user or insufficient permissions"
-// @Failure 500 {object} MealError "Internal server error"
-// @Router /meals/optin [put]
-func ChangeOptInMeal(c *gin.Context, db *sql.DB) {
-	var requestOptInMeal RequestOptInMeal
-
-	if err := c.ShouldBindJSON(&requestOptInMeal); err != nil {
-		c.JSON(http.StatusBadRequest, MealError{Error: "Invalid request body"})
-		return
-	}
-
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
-		return
-	}
-
-	isSelfAction := requestOptInMeal.UserId == jwtPayload.UserId
-	isGroupMember, _, err := group.IsUserInGroupViaMealId(requestOptInMeal.MealId, requestOptInMeal.UserId, db)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
-		return
-	}
-	if !isGroupMember {
-		c.JSON(http.StatusForbidden, MealError{Error: "Forbidden"})
-		return
-	}
-	if !isSelfAction {
-		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(requestOptInMeal.MealId, jwtPayload.UserId, roles.CanForceMealPreferenceAndCooking, db)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
-			return
-		}
-		if !canPerformAction {
-			c.JSON(http.StatusForbidden, MealError{Error: "You are not allowed to perform this action"})
-		}
-	}
-
-	err = ChangeOptInStatusMealInDB(requestOptInMeal.UserId, requestOptInMeal, db)
-	if err != nil {
-		if errors.Is(err, ErrDataCouldNotBeUpdated) {
-			c.JSON(http.StatusBadRequest, MealError{Error: "This user already has a Preference in this Meal"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
-		return
-	}
-
-	if !isSelfAction {
-		//TODO: send notification to user whose opt in status got changed
-	}
-
-	c.JSON(http.StatusOK, MealSuccess{Message: "Meal Successfully OptIn changed"}) // TODO: later return entire meal preferences for this meal, to have valid frontend.
-}
-
 // Meal Cook
 
 // AddCookToMeal godoc
@@ -380,6 +315,75 @@ func AddCookToMeal(c *gin.Context, db *sql.DB) {
 	//TODO: Send an updated list of users in the meal
 
 	c.JSON(http.StatusCreated, MealSuccess{Message: "Cook added to meal"})
+}
+
+func UpdatePreference(c *gin.Context, db *sql.DB) {
+	var updatePreference RequestUpdatePreference
+	if err := c.ShouldBindJSON(&updatePreference); err != nil {
+		c.JSON(http.StatusBadRequest, MealError{Error: "Invalid request body"})
+		return
+	}
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, MealError{Error: "Unauthorized"})
+		return
+	}
+
+	if updatePreference.Preference == nil && updatePreference.IsCook == nil {
+		c.JSON(http.StatusOK, MealSuccess{Message: "No changes made"})
+		return
+	}
+
+	isSelfAction := updatePreference.UserId == jwtPayload.UserId
+
+	isGroupMember, _, err := group.IsUserInGroupViaMealId(updatePreference.MealId, updatePreference.UserId, db)
+	if !isGroupMember {
+		c.JSON(http.StatusForbidden, MealError{Error: "Forbidden"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+		return
+	}
+
+	if !isSelfAction {
+		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(updatePreference.MealId, jwtPayload.UserId, roles.CanForceMealPreferenceAndCooking, db)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+			return
+		}
+		if !canPerformAction {
+			c.JSON(http.StatusForbidden, MealError{Error: "You are not allowed to perform this action"})
+			return
+		}
+	}
+
+	if updatePreference.Preference != nil {
+		err = ChangeOptInStatusMealInDB(updatePreference.UserId, updatePreference.MealId, *updatePreference.Preference, db)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+			return
+		}
+	}
+	if updatePreference.IsCook != nil {
+		if *updatePreference.IsCook {
+			err = AddCookToMealInDB(updatePreference.UserId, updatePreference.MealId, db)
+		} else {
+			err = RemoveCookFromMealInDB(updatePreference.UserId, updatePreference.MealId, db)
+		}
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, MealError{Error: "Internal server error"})
+			return
+		}
+	}
+
+	if !isSelfAction {
+		//TODO: Send notification to user whose preference was changed
+	}
+
+	c.JSON(http.StatusOK, MealSuccess{Message: "Preference successfully updated"})
 }
 
 // RemoveCookFromMeal godoc
