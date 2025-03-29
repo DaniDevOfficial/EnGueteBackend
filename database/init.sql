@@ -97,7 +97,7 @@ CREATE TABLE meal_preferences
     preference_id UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     meal_id       UUID        NOT NULL REFERENCES meals (meal_id) ON DELETE CASCADE,
     user_id       UUID        NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
-    preference    VARCHAR(20) NOT NULL CHECK (preference IN ('opt-in', 'opt-out', 'undecided', 'eat later')),
+    preference    VARCHAR(20) NOT NULL,
     changed_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 

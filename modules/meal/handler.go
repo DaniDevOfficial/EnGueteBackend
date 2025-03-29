@@ -7,6 +7,7 @@ import (
 
 func RegisterMealRoute(router *gin.Engine, db *sql.DB) {
 	registerMealRoutes(router, db)
+	registerPreferenceRoutes(router, db)
 	registerMealUpdateRoutes(router, db)
 	registerMealCooksRoutes(router, db)
 }

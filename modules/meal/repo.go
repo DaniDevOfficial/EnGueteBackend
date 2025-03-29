@@ -125,11 +125,15 @@ SELECT
     false AS is_cook
 FROM user_groups ug
 INNER JOIN users u ON u.user_id = ug.user_id
-LEFT JOIN meal_preferences up 
-    ON up.user_id = u.user_id 
-    AND up.meal_id = $1
+LEFT JOIN meal_preferences mp 
+    ON mp.user_id = u.user_id 
+    AND mp.meal_id = $1
+LEFT JOIN meal_cooks mc 
+    ON mc.user_id = u.user_id 
+    AND mc.meal_id = $1
 WHERE ug.group_id = $2
-  AND up.user_id IS NULL
+  AND mp.user_id IS NULL
+	AND mc.user_id IS NULL
 GROUP BY u.user_id, u.username;
 
 `
@@ -191,11 +195,10 @@ func ChangeOptInStatusMealInDB(userId string, mealId string, preference string, 
         SET preference = EXCLUDED.preference,
             last_updated = EXCLUDED.last_updated;`
 
-	var updatedMealID string
-	err := db.QueryRow(query, mealId, userId, preference, time.Now()).Scan(&updatedMealID)
+	_, err := db.Exec(query, mealId, userId, preference, time.Now())
 
 	if err != nil {
-		// Check for unique constraint violation using pq's error code
+
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
 			return ErrUserAlreadyHasAPreferenceInSpecificMeal

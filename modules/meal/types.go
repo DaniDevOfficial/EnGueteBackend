@@ -57,8 +57,8 @@ type RequestAddCookToMeal struct {
 type RequestUpdatePreference struct {
 	UserId     string  `json:"userId" binding:"required"`
 	MealId     string  `json:"mealId" binding:"required,uuid"`
-	Preference *string `json:"preference" binding:"required"`
-	IsCook     *bool   `json:"isCook" binding:"required"`
+	Preference *string `json:"preference"`
+	IsCook     *bool   `json:"isCook"`
 }
 
 type RequestRemoveCook struct {
