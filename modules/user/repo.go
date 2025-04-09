@@ -12,7 +12,7 @@ func GetUserIdByName(username string, db *sql.DB) (string, error) {
 	var userId string
 	err := row.Scan(&userId)
 	if errors.Is(err, sql.ErrNoRows) {
-		return "", err
+		return "", nil
 	}
 	return userId, err
 }

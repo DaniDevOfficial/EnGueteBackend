@@ -308,7 +308,7 @@ func UpdateUsername(c *gin.Context, db *sql.DB) {
 	}
 	userId, err := GetUserIdByName(changeUsernameData.Username, db)
 
-	if userId == "" || err != nil {
+	if userId != "" || err != nil {
 		c.JSON(http.StatusBadRequest, UserError{Error: "Username is already in use"})
 		return
 	}

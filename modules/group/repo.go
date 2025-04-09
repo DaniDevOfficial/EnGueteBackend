@@ -269,10 +269,10 @@ func GetUserRolesInGroupViaMealId(mealId string, userId string, db *sql.DB) ([]s
 	query := `
 	SELECT ugr.role
 	FROM user_group_roles ugr
-	LEFT JOIN meals m ON m.group_id = g.group_id
-	LEFT JOIN user_groups gu ON gu.group_id = g.group_id
+	LEFT JOIN meals m ON m.group_id = ugr.group_id
+	LEFT JOIN user_groups gu ON gu.group_id = ugr.group_id
 	WHERE m.meal_id = $2
-	AND user_group_roles.user_id = $1
+	AND ugr.user_id = $1
 `
 	rows, err := db.Query(query, userId, mealId)
 	if err != nil {
