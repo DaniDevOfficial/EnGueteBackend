@@ -177,3 +177,12 @@ func PushRefreshTokenToDB(data NewRefreshTokenDataDB, db *sql.DB) error {
 
 	return err
 }
+
+func VoidRefreshTokenInDB(token string, db *sql.DB) error {
+	sqlString := `
+	DELETE FROM refresh_tokens 
+	WHERE refresh_token = $1
+`
+	_, err := db.Exec(sqlString, token)
+	return err
+}

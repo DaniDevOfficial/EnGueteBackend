@@ -159,6 +159,24 @@ func SignIn(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, MessageResponse{Message: "Sign in successfully"})
 }
 
+func Logout(c *gin.Context, db *sql.DB) {
+	refreshToken, err := auth.GetRefreshTokenFromHeader(c)
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusUnauthorized, UserError{Error: "Error getting JWT Payload"})
+		return
+	}
+
+	err = jwt.VoidRefreshTokenInDB(refreshToken, db)
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, UserError{Error: "Error logging out"})
+		return
+	}
+
+	c.JSON(http.StatusOK, MessageResponse{Message: "Logout successfully"})
+}
+
 // GetUserInformationById godoc
 // @Summary Get a user by ID
 // @Description Fetch user details by ID.
@@ -314,6 +332,11 @@ func UpdateUsername(c *gin.Context, db *sql.DB) {
 	}
 	err = UpdateUsernameInDB(changeUsernameData.Username, jwtTokenData.UserId, db)
 	if err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, UserError{Error: "User not found"})
+			return
+		}
+
 		c.JSON(http.StatusInternalServerError, UserError{Error: "Internal server error"})
 		return
 	}

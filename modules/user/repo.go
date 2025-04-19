@@ -113,12 +113,27 @@ func CreateUserInDB(userData DBNewUser, db *sql.DB) (string, error) {
 	return userId, nil
 }
 
+var ErrUserNotFound = errors.New("user not found")
+
 func UpdateUsernameInDB(newUsername string, userId string, db *sql.DB) error {
 	query := `	UPDATE users
 				SET	username = $1
 				WHERE user_id = $2
 `
-	_, err := db.Exec(query, newUsername, userId)
+	result, err := db.Exec(query, newUsername, userId)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return ErrUserNotFound
+	}
+
 	return err
 }
 
