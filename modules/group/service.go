@@ -83,6 +83,56 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 	})
 }
 
+func UpdateGroupName(c *gin.Context, db *sql.DB) {
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Authorisation is not valid"})
+		return
+	}
+
+	var groupData RequestUpdateGroupName
+	if err := c.ShouldBindJSON(&groupData); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Error decoding request"})
+		return
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
+	}
+
+	canPerformAction, _, err := CheckIfUserIsAllowedToPerformAction(groupData.GroupId, jwtPayload.UserId, roles.CanUpdateGroup, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
+		return
+	}
+	if !canPerformAction {
+		c.JSON(http.StatusForbidden, GroupError{Error: "You are not allowed to perform this action"})
+		return
+	}
+
+	err = UpdateGroupNameInDB(groupData, tx)
+	if err != nil {
+		_ = tx.Rollback()
+
+		if errors.Is(err, ErrNothingHappened) {
+			c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Group does not exist"})
+			return
+		}
+
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Updating Group Name"})
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Updating Group Name"})
+		return
+	}
+
+	c.JSON(http.StatusOK, GroupSuccess{Message: "Group name updated successfully"})
+}
+
 // GetGroupById godoc
 // @Summary Retrieve group information
 // @Description Fetches detailed information about a specific group, including group metadata and associated meals.

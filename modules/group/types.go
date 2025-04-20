@@ -12,6 +12,11 @@ type RequestNewGroup struct {
 	GroupName string `json:"groupName" binding:"required"`
 }
 
+type RequestUpdateGroupName struct {
+	GroupId   string `json:"groupId" binding:"required,uuid"`
+	GroupName string `json:"groupName" binding:"required"`
+}
+
 type InviteLinkGenerationRequest struct {
 	GroupId            string `json:"groupId" binding:"required,uuid"`
 	ExpirationDateTime string `json:"expirationDateTime"`
