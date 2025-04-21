@@ -56,6 +56,29 @@ func AddRoleToUserInGroup(groupId string, userId string, role string, db *sql.DB
 	return err
 }
 
+func DeleteGroupInDB(groupId string, db *sql.DB) error {
+	query := `
+		DELETE FROM groups
+		WHERE group_id = $1
+	`
+
+	result, err := db.Exec(query, groupId)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return ErrNothingHappened
+	}
+
+	return nil
+}
+
 func UpdateGroupNameInDB(groupInfo RequestUpdateGroupName, db *sql.Tx) error {
 	query := `UPDATE groups SET group_name = $1 WHERE group_id = $2`
 

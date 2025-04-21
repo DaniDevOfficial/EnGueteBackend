@@ -11,6 +11,9 @@ type GroupSuccess struct {
 type RequestNewGroup struct {
 	GroupName string `json:"groupName" binding:"required"`
 }
+type RequestDeleteGroup struct {
+	GroupId string `form:"groupId" binding:"required,uuid"`
+}
 
 type RequestUpdateGroupName struct {
 	GroupId   string `json:"groupId" binding:"required,uuid"`

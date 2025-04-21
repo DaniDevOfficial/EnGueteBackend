@@ -83,6 +83,43 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 	})
 }
 
+func DeleteGroup(c *gin.Context, db *sql.DB) {
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Authorisation is not valid"})
+		return
+	}
+
+	var groupData RequestDeleteGroup
+	if err := c.ShouldBindQuery(&groupData); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Error decoding request"})
+		return
+	}
+
+	canPerformAction, _, err := CheckIfUserIsAllowedToPerformAction(groupData.GroupId, jwtPayload.UserId, roles.CanDeleteGroup, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
+		return
+	}
+	if !canPerformAction {
+		c.JSON(http.StatusForbidden, GroupError{Error: "You are not allowed to perform this action"})
+		return
+	}
+
+	err = DeleteGroupInDB(groupData.GroupId, db)
+	if err != nil {
+		if errors.Is(err, ErrNothingHappened) {
+			c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Group does not exist"})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, GroupSuccess{Message: "Group deleted successfully"})
+}
+
 func UpdateGroupName(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
