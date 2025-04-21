@@ -17,7 +17,7 @@ func registerGroupRoutes(router *gin.Engine, db *sql.DB) {
 	router.PUT("/groups/name", func(c *gin.Context) {
 		UpdateGroupName(c, db)
 	})
-	router.GET("/groups/:groupId/members", func(c *gin.Context) {
+	router.GET("/groups/members", func(c *gin.Context) {
 		GetGroupMembers(c, db)
 	})
 	router.GET("/groups", func(c *gin.Context) {

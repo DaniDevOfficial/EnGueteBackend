@@ -90,7 +90,7 @@ func DeleteGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	var groupData RequestDeleteGroup
+	var groupData RequestIdGroup
 	if err := c.ShouldBindQuery(&groupData); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Error decoding request"})
 		return
@@ -253,8 +253,15 @@ func GetGroupMembers(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	groupId := c.Param("groupId")
-	inGroup, err := IsUserInGroup(groupId, jwtPayload.UserId, db)
+	var groupData RequestIdGroup
+
+	if err := c.ShouldBindQuery(&groupData); err != nil {
+		log.Println(err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Error decoding request"})
+		return
+	}
+
+	inGroup, err := IsUserInGroup(groupData.GroupId, jwtPayload.UserId, db)
 	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server error"})
@@ -265,7 +272,7 @@ func GetGroupMembers(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	members, err := GetGroupMembersFromDb(groupId, db)
+	members, err := GetGroupMembersFromDb(groupData.GroupId, db)
 	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server error"})

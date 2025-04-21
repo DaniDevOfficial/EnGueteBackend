@@ -11,7 +11,7 @@ type GroupSuccess struct {
 type RequestNewGroup struct {
 	GroupName string `json:"groupName" binding:"required"`
 }
-type RequestDeleteGroup struct {
+type RequestIdGroup struct {
 	GroupId string `form:"groupId" binding:"required,uuid"`
 }
 
@@ -61,6 +61,7 @@ type MealCard struct {
 
 type Member struct {
 	Username  string   `json:"username"`
+	GroupId   string   `json:"groupId"`
 	UserId    string   `json:"userId"`
 	UserRoles []string `json:"userRoles"`
 }

@@ -127,14 +127,15 @@ func GetGroupInformationFromDb(groupId string, userId string, db *sql.DB) (Group
 func GetGroupMembersFromDb(groupId string, db *sql.DB) ([]Member, error) {
 	query := `
 		SELECT 
-    		u.username,
+    		ug.group_id,
     		u.user_id,
+    		u.username,
     		ARRAY_AGG(ur.role) AS user_roles
 		FROM user_groups ug
-		LEFT JOIN users u ON ug.user_id = u.user_id
-		LEFT JOIN user_group_roles ur ON ur.group_id = ug.group_id AND ur.user_id = u.user_id
+		INNER JOIN users u ON ug.user_id = u.user_id
+		INNER JOIN user_group_roles ur ON ur.group_id = ug.group_id AND ur.user_id = u.user_id
 		WHERE ug.group_id = $1
-		GROUP BY u.username, u.user_id;
+		GROUP BY ug.group_id, u.user_id, u.username;
 `
 	rows, err := db.Query(query, groupId)
 	if err != nil {
@@ -151,7 +152,7 @@ func GetGroupMembersFromDb(groupId string, db *sql.DB) ([]Member, error) {
 		var member Member
 		var userRoles pq.StringArray
 
-		err = rows.Scan(&member.Username, &member.UserId, &userRoles)
+		err = rows.Scan(&member.GroupId, &member.UserId, &member.Username, &userRoles)
 		if err != nil {
 			return nil, err
 		}
