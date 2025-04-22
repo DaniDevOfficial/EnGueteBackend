@@ -26,7 +26,7 @@ func registerGroupRoutes(router *gin.Engine, db *sql.DB) {
 	router.DELETE("/groups/", func(c *gin.Context) {
 		DeleteGroup(c, db)
 	})
-	router.DELETE("/groups/:groupId/leave", func(c *gin.Context) {
+	router.DELETE("/groups/leave", func(c *gin.Context) {
 		LeaveGroup(c, db)
 	})
 }

@@ -399,13 +399,6 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = AddMemberToAllOpenMealsWithTransaction(groupId, jwtPayload.UserId, tx)
-	if err != nil {
-		_ = tx.Rollback()
-		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Meals"})
-		return
-	}
-
 	err = tx.Commit()
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Adding User to Group"})
@@ -481,7 +474,11 @@ func LeaveGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	groupId := c.Param("groupId")
+	var groupData RequestIdGroup
+	if err := c.ShouldBindQuery(&groupData); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Error decoding request"})
+		return
+	}
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -489,9 +486,9 @@ func LeaveGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = LeaveGroupInDB(groupId, jwtPayload.UserId, tx) //TODO: some check for if a user was eiter the last user in a group or if there are no admins left. If he was the last one delete the group and if he was the last admin pick a new one by join-date
+	err = LeaveGroupInDB(groupData.GroupId, jwtPayload.UserId, tx) //TODO: some check for if a user was eiter the last user in a group or if there are no admins left. If he was the last one delete the group and if he was the last admin pick a new one by join-date
 	if err != nil {
-		err = tx.Rollback()
+		_ = tx.Rollback()
 		if errors.Is(err, ErrNoMatchingGroupOrUser) {
 			c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Cant leave a group your not in or that doesnt exist"})
 			return
@@ -500,12 +497,13 @@ func LeaveGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = RemovePreferencesInOpenMealsInGroup(groupId, jwtPayload.UserId, tx)
+	err = RemovePreferencesInOpenMealsInGroup(groupData.GroupId, jwtPayload.UserId, tx)
 	if err != nil {
 		err = tx.Rollback()
 		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error leaving group"})
 
 	}
+	//TODO: delete roles
 
 	err = tx.Commit()
 	if err != nil {
