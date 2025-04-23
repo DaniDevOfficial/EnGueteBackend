@@ -32,10 +32,13 @@ func registerGroupRoutes(router *gin.Engine, db *sql.DB) {
 }
 
 func registerInviteTokenRoutes(router *gin.Engine, db *sql.DB) {
+	router.GET("/groups/invite/", func(c *gin.Context) {
+		GetAllInviteTokensInAGroup(c, db)
+	})
 	router.POST("/groups/invite/", func(c *gin.Context) {
 		GenerateInviteLink(c, db)
 	})
-	router.DELETE("/groups/invite/:inviteToken", func(c *gin.Context) {
+	router.DELETE("/groups/invite/", func(c *gin.Context) {
 		VoidInviteToken(c, db)
 	})
 	router.POST("/groups/invite/join/:inviteToken", func(c *gin.Context) {

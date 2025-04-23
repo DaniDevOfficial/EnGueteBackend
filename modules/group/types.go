@@ -15,6 +15,10 @@ type RequestIdGroup struct {
 	GroupId string `form:"groupId" binding:"required,uuid"`
 }
 
+type RequestInviteToken struct {
+	InviteToken string `form:"inviteToken" binding:"required,uuid"`
+}
+
 type RequestUpdateGroupName struct {
 	GroupId   string `json:"groupId" binding:"required,uuid"`
 	GroupName string `json:"groupName" binding:"required"`
@@ -22,11 +26,17 @@ type RequestUpdateGroupName struct {
 
 type InviteLinkGenerationRequest struct {
 	GroupId            string `json:"groupId" binding:"required,uuid"`
-	ExpirationDateTime string `json:"expirationDateTime"`
+	ExpirationDateTime string `json:"expiresAt" binding:"required,dateTime"`
+}
+
+type InviteToken struct {
+	InviteToken string `json:"inviteToken"`
+	ExpiresAt   string `json:"expiresAt"`
 }
 
 type InviteLinkGenerationResponse struct {
-	InviteLink string `json:"inviteLink"`
+	InviteLink  string `json:"inviteLink"`
+	InviteToken string `json:"inviteToken"`
 }
 
 type ResponseNewGroup struct {

@@ -17,6 +17,7 @@ const (
 
 	CanCreateInviteLinks = "can_create_invite_links"
 	CanVoidInviteLinks   = "can_void_invite_links"
+	CanViewInviteLinks   = "can_view_invite_links"
 
 	CanSendNotifications = "can_send_notifications"
 
@@ -49,6 +50,7 @@ var RolePermissions = map[string]map[string]bool{
 
 	CanCreateInviteLinks: {AdminRole: true, ManagerRole: false, MemberRole: false},
 	CanVoidInviteLinks:   {AdminRole: true, ManagerRole: false, MemberRole: false},
+	CanViewInviteLinks:   {AdminRole: true, ManagerRole: true, MemberRole: false},
 
 	CanSendNotifications: {AdminRole: true, ManagerRole: true, MemberRole: false},
 

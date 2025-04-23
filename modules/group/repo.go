@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/lib/pq"
-	"time"
 )
 
 func CreateNewGroupInDBWithTransaction(groupData RequestNewGroup, userId string, tx *sql.Tx) (string, error) {
@@ -345,7 +344,7 @@ func GetUserRolesInGroupViaMealId(mealId string, userId string, db *sql.DB) ([]s
 	return userRoles, nil
 }
 
-func CreateNewInviteInDBWithTransaction(groupId string, tx *sql.Tx) (string, error) {
+func CreateNewInviteInDBWithTransaction(inviteData InviteLinkGenerationRequest, tx *sql.Tx) (string, error) {
 	query := `
 		INSERT INTO group_invites 
 		    (group_id, expires_at)
@@ -353,9 +352,8 @@ func CreateNewInviteInDBWithTransaction(groupId string, tx *sql.Tx) (string, err
 		    ($1, $2)
 		RETURNING invite_token`
 	var inviteToken string
-	expirationTime := time.Now().Add(24 * time.Hour)
 
-	err := tx.QueryRow(query, groupId, expirationTime).Scan(&inviteToken)
+	err := tx.QueryRow(query, inviteData.GroupId, inviteData.ExpirationDateTime).Scan(&inviteToken)
 	if err != nil {
 		return "", err
 	}
@@ -378,15 +376,57 @@ func ValidateInviteTokenInDB(inviteToken string, db *sql.DB) (string, error) {
 	return groupId, err
 }
 
-func VoidInviteTokenIfAllowedInDB(inviteToken string, userId string, db *sql.DB) error {
+func GetAllInviteTokensInAGroupFromDB(groupId string, db *sql.DB) ([]InviteToken, error) {
+	query := `
+		WITH deleted AS (
+			DELETE FROM group_invites
+			WHERE expires_at <= NOW()
+		)
+		SELECT invite_token, expires_at
+		FROM group_invites
+		WHERE group_id = $1
+		AND (expires_at IS NULL OR expires_at > NOW())
+		ORDER BY expires_at;
+	`
+
+	rows, err := db.Query(query, groupId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var inviteTokens []InviteToken
+	for rows.Next() {
+		var inviteToken InviteToken
+		err := rows.Scan(&inviteToken.InviteToken, &inviteToken.ExpiresAt)
+		if err != nil {
+			return nil, err
+		}
+		inviteTokens = append(inviteTokens, inviteToken)
+	}
+
+	return inviteTokens, nil
+}
+
+func VoidInviteTokenInDB(inviteToken string, db *sql.DB) error {
 	query := `
 	DELETE FROM group_invites gi
-	USING groups
 	WHERE gi.invite_token = $1
-	AND groups.group_id = gi.group_id 
-	AND groups.created_by = $2
 `
-	_, err := db.Exec(query, inviteToken, userId)
+	result, err := db.Exec(query, inviteToken)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return ErrNothingHappened
+	}
+
 	return err
 }
 

@@ -324,7 +324,7 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	token, err := CreateNewInviteInDBWithTransaction(inviteRequest.GroupId, tx)
+	token, err := CreateNewInviteInDBWithTransaction(inviteRequest, tx)
 	if err != nil {
 		_ = tx.Rollback()
 		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error Creating Invite1"})
@@ -337,9 +337,9 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	fullLink := auth.GenerateInviteLink(token)
-	c.JSON(http.StatusCreated, InviteLinkGenerationResponse{
-		InviteLink: fullLink,
+	c.JSON(http.StatusCreated, InviteToken{
+		ExpiresAt:   inviteRequest.ExpirationDateTime,
+		InviteToken: token,
 	})
 }
 
@@ -409,6 +409,38 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, GroupSuccess{Message: "User added to group"})
 }
 
+func GetAllInviteTokensInAGroup(c *gin.Context, db *sql.DB) {
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Invalid jwt token"})
+		return
+	}
+
+	var groupData RequestIdGroup
+	if err := c.ShouldBindQuery(&groupData); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Error decoding request"})
+		return
+	}
+
+	canPerformAction, _, err := CheckIfUserIsAllowedToPerformAction(groupData.GroupId, jwtPayload.UserId, roles.CanViewInviteLinks, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
+		return
+	}
+	if !canPerformAction {
+		c.JSON(http.StatusForbidden, GroupError{Error: "You are not allowed to perform this action"})
+		return
+	}
+
+	inviteTokens, err := GetAllInviteTokensInAGroupFromDB(groupData.GroupId, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, inviteTokens)
+}
+
 // VoidInviteToken godoc
 // @Summary Delete an invite token
 // @Description Allows a user to delete an invite token. The user must have a valid token and the necessary permissions.
@@ -429,8 +461,13 @@ func VoidInviteToken(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	inviteToken := c.Param("inviteToken")
-	groupId, err := ValidateInviteTokenInDB(inviteToken, db)
+	var inviteData RequestInviteToken
+	if err := c.ShouldBindQuery(&inviteData); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Error decoding request"})
+		return
+	}
+
+	groupId, err := ValidateInviteTokenInDB(inviteData.InviteToken, db)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error validating invite token"})
 		return
@@ -445,8 +482,13 @@ func VoidInviteToken(c *gin.Context, db *sql.DB) {
 		c.JSON(http.StatusForbidden, GroupError{Error: "You are not allowed to perform this action"})
 	}
 
-	err = VoidInviteTokenIfAllowedInDB(groupId, jwtPayload.UserId, db)
+	err = VoidInviteTokenInDB(inviteData.InviteToken, db)
 	if err != nil {
+		if errors.Is(err, ErrNothingHappened) {
+			c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Invite token does not exist"})
+			return
+		}
+
 		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error deleting invite token"})
 		return
 	}
