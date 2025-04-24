@@ -39,7 +39,7 @@ type InviteLinkGenerationResponse struct {
 	InviteToken string `json:"inviteToken"`
 }
 
-type ResponseNewGroup struct {
+type ResponseGroupId struct {
 	GroupId string `json:"groupId"`
 }
 

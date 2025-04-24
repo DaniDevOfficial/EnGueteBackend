@@ -19,7 +19,7 @@ import (
 // @Produce json
 // @Param Authorization header string true "Bearer token for authorization"
 // @Param group body RequestNewGroup true "Request payload for creating a new group"
-// @Success 201 {object} ResponseNewGroup "Group successfully created"
+// @Success 201 {object} ResponseGroupId "Group successfully created"
 // @Failure 400 {object} GroupError "Bad request - error decoding request"
 // @Failure 401 {object} GroupError "Unauthorized - invalid authorization token"
 // @Failure 404 {object} GroupError "Not Found - resource not found"
@@ -78,7 +78,7 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, ResponseNewGroup{
+	c.JSON(http.StatusCreated, ResponseGroupId{
 		GroupId: newGroupId,
 	})
 }
@@ -364,8 +364,13 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	inviteToken := c.Param("inviteToken")
-	groupId, err := ValidateInviteTokenInDB(inviteToken, db)
+	var inviteData RequestInviteToken
+	if err := c.ShouldBindQuery(&inviteData); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Error decoding request"})
+		return
+	}
+
+	groupId, err := ValidateInviteTokenInDB(inviteData.InviteToken, db)
 	if err != nil {
 		log.Println(err)
 		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Invalid invite token"})
@@ -376,6 +381,15 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 	if err != nil {
 		log.Println(err)
 		c.AbortWithStatusJSON(http.StatusNotFound, GroupError{Error: "User not found"})
+		return
+	}
+
+	isMember, err := IsUserInGroup(groupId, jwtPayload.UserId, db)
+	if err != nil {
+		return
+	}
+	if isMember {
+		c.JSON(http.StatusOK, ResponseGroupId{GroupId: groupId})
 		return
 	}
 
@@ -406,7 +420,7 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 	}
 
 	//TODO: this will maybe just return the groupId and then in the frontend the redirection will get handled
-	c.JSON(http.StatusOK, GroupSuccess{Message: "User added to group"})
+	c.JSON(http.StatusOK, ResponseGroupId{GroupId: groupId})
 }
 
 func GetAllInviteTokensInAGroup(c *gin.Context, db *sql.DB) {
