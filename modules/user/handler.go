@@ -39,5 +39,8 @@ func registerAuthRoutes(router *gin.Engine, db *sql.DB) {
 	router.POST("/auth/logout", func(c *gin.Context) {
 		Logout(c, db)
 	})
+	router.GET("/auth/check", func(c *gin.Context) {
+		CheckAuth(c, db)
+	})
 
 }

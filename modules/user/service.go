@@ -177,6 +177,29 @@ func Logout(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, MessageResponse{Message: "Logout successfully"})
 }
 
+func CheckAuth(c *gin.Context, db *sql.DB) {
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusUnauthorized, UserError{Error: "Error getting JWT Payload"})
+		return
+	}
+
+	userData, err := GetUserByIdFromDB(jwtPayload.UserId, db)
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusUnauthorized, UserError{Error: "Error getting JWT Payload"})
+		return
+	}
+
+	response := ResponseUserData{
+		UserID:   userData.UserId,
+		Username: userData.Username,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
 // GetUserInformationById godoc
 // @Summary Get a user by ID
 // @Description Fetch user details by ID.
