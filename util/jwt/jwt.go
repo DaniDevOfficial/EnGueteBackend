@@ -51,7 +51,7 @@ func VerifyToken(tokenString string) (bool, error) {
 }
 
 var RefreshTokenNotInDbError = errors.New("refresh token not found in database")
-var RefreshTokenIsNotValidDueToExpirationDate = errors.New("refresh token not valid due to expiration date")
+var TokenIsNotValidDueToExpirationDate = errors.New("token is not valid due to expiration date")
 
 func VerifyRefreshToken(tokenString string, db *sql.DB) (JWTPayload, error) {
 
@@ -72,8 +72,8 @@ func VerifyRefreshToken(tokenString string, db *sql.DB) (JWTPayload, error) {
 		return JWTPayload{}, fmt.Errorf("failed to unmarshal payload: %v", err)
 	}
 	if payload.Exp > 0 {
-		if payload.Exp < time.Now().Unix()-3600*24*8 {
-			return payload, RefreshTokenIsNotValidDueToExpirationDate
+		if payload.Exp < time.Now().Unix() {
+			return payload, TokenIsNotValidDueToExpirationDate
 		}
 	}
 
@@ -158,6 +158,12 @@ func DecodeBearer(tokenString string) (JWTPayload, error) {
 	err = json.Unmarshal(payloadBytes, &payload)
 	if err != nil {
 		return JWTPayload{}, fmt.Errorf("failed to unmarshal payload: %v", err)
+	}
+
+	if payload.Exp > 0 {
+		if payload.Exp < time.Now().Unix() {
+			return payload, TokenIsNotValidDueToExpirationDate
+		}
 	}
 
 	return payload, nil

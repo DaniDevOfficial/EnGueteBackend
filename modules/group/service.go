@@ -553,14 +553,15 @@ func LeaveGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = RemovePreferencesInOpenMealsInGroup(groupData.GroupId, jwtPayload.UserId, tx)
+	err = RemovePreferencesInOpenMealsInGroup(jwtPayload.UserId, groupData.GroupId, tx)
+
 	if err != nil {
 		err = tx.Rollback()
 		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error leaving group"})
 
 	}
 	//TODO: delete roles
-
+	//TODO: delete isCook
 	err = tx.Commit()
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, GroupError{Error: "Error leaving group"})
