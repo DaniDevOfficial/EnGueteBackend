@@ -15,6 +15,11 @@ type RequestIdGroup struct {
 	GroupId string `form:"groupId" binding:"required,uuid"`
 }
 
+type RequestGroupMeals struct {
+	GroupId    string  `form:"groupId" binding:"required,uuid"`
+	FilterDate *string `form:"filterDate" binding:"dateTime"`
+}
+
 type RequestInviteToken struct {
 	InviteToken string `form:"inviteToken" binding:"required,uuid"`
 }
@@ -77,10 +82,12 @@ type Member struct {
 }
 
 type FilterGroupRequest struct {
-	GroupId     string `form:"groupId" binding:"required"`
-	IsFulfilled int    `form:"isFulfilled"`
-	IsOpen      int    `form:"isOpen"`
-	WeekFilter  string `form:"weekFilter"`
-	AmICook     int    `form:"amICook"`
-	Preference  string `form:"preference"`
+	GroupId         string  `form:"groupId" binding:"required"`
+	IsFulfilled     int     `form:"isFulfilled"`
+	IsOpen          int     `form:"isOpen"`
+	WeekFilter      *string `form:"weekFilter"`
+	StartDateFilter *string
+	EndDateFilter   *string
+	AmICook         int    `form:"amICook"`
+	Preference      string `form:"preference"`
 }

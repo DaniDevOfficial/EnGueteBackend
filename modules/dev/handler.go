@@ -1,13 +1,14 @@
 package dev
 
 import (
+	"database/sql"
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterDevRoutes(router *gin.Engine) {
-	registerTestRoutes(router)
+func RegisterDevRoutes(router *gin.Engine, db *sql.DB) {
+	registerTestRoutes(router, db)
 }
-func registerTestRoutes(router *gin.Engine) {
+func registerTestRoutes(router *gin.Engine, db *sql.DB) {
 
 	router.POST("/test/jwtAuth", func(c *gin.Context) {
 		CheckValidJWT(c)
@@ -17,5 +18,8 @@ func registerTestRoutes(router *gin.Engine) {
 	})
 	router.POST("/test/uuid", func(c *gin.Context) {
 		ValidUUIDCheck(c)
+	})
+	router.GET("/test/dbnil", func(c *gin.Context) {
+		DBNilCheck(c, db)
 	})
 }

@@ -4,11 +4,13 @@ import (
 	"database/sql"
 	"enguete/modules/user"
 	"enguete/util/auth"
+	"enguete/util/dates"
 	"enguete/util/roles"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
+	"time"
 )
 
 // CreateNewGroup godoc
@@ -188,12 +190,15 @@ func UpdateGroupName(c *gin.Context, db *sql.DB) {
 func GetGroupById(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
+		log.Println(err)
 		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Authorization is not valid"})
 		return
 	}
 
 	var filterRequest FilterGroupRequest
 	if err = c.ShouldBindQuery(&filterRequest); err != nil {
+		log.Println(err)
+
 		c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Error decoding request"})
 		return
 	}
@@ -216,6 +221,31 @@ func GetGroupById(c *gin.Context, db *sql.DB) {
 	}
 
 	groupInformation.UserRoleRights = roles.GetAllAllowedActionsForRoles(groupInformation.UserRoles)
+
+	if filterRequest.WeekFilter != nil {
+
+		weekTime, err := time.Parse(time.RFC3339, *filterRequest.WeekFilter)
+		if err != nil {
+			log.Println(err)
+			weekTime = time.Now()
+
+		}
+
+		startOfWeek, endOfWeek, err := dates.GetStartAndEndOfWeek(weekTime)
+		if err != nil {
+			log.Println(err)
+			c.JSON(http.StatusBadRequest, GroupError{Error: "Error decoding request"})
+			return
+		}
+
+		log.Println("Start of week: ", startOfWeek)
+		log.Println("End of week: ", endOfWeek)
+
+		filterRequest.StartDateFilter = &startOfWeek
+		filterRequest.EndDateFilter = &endOfWeek
+		log.Println("Start date filter: ", *filterRequest.StartDateFilter)
+	}
+
 	mealCards, err := GetMealsInGroupDB(filterRequest, jwtPayload.UserId, db)
 	if err != nil {
 		log.Println(err)
@@ -280,6 +310,61 @@ func GetGroupMembers(c *gin.Context, db *sql.DB) {
 	}
 
 	c.JSON(http.StatusOK, members)
+}
+
+func GetGroupMeals(c *gin.Context, db *sql.DB) {
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		log.Println(err)
+		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Authorization is not valid"})
+		return
+	}
+	var groupData RequestGroupMeals
+	if err := c.ShouldBindQuery(&groupData); err != nil {
+		log.Println(err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, GroupError{Error: "Error decoding request"})
+		return
+	}
+	inGroup, err := IsUserInGroup(groupData.GroupId, jwtPayload.UserId, db)
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server error"})
+		return
+	}
+	if !inGroup {
+		c.JSON(http.StatusForbidden, GroupError{Error: "You are not in this group or it doesnt exist"})
+		return
+	}
+	var filterRequest FilterGroupRequest
+
+	filterRequest.GroupId = groupData.GroupId
+
+	if groupData.FilterDate != nil {
+		weekTime, err := time.Parse(time.RFC3339, *groupData.FilterDate)
+
+		if err != nil {
+			log.Println(err)
+			weekTime = time.Now()
+		}
+
+		startOfWeek, endOfWeek, err := dates.GetStartAndEndOfWeek(weekTime)
+		if err != nil {
+			log.Println(err)
+			c.JSON(http.StatusBadRequest, GroupError{Error: "Error decoding request"})
+			return
+		}
+
+		filterRequest.StartDateFilter = &startOfWeek
+		filterRequest.EndDateFilter = &endOfWeek
+	}
+
+	mealCards, err := GetMealsInGroupDB(filterRequest, jwtPayload.UserId, db)
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal Server Error"})
+		return
+	}
+	c.JSON(http.StatusOK, mealCards)
 }
 
 // GenerateInviteLink godoc

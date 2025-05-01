@@ -180,10 +180,12 @@ func GetMealsInGroupDB(filters FilterGroupRequest, userId string, db *sql.DB) ([
         LEFT JOIN meal_preferences user_pref ON user_pref.meal_id = m.meal_id AND user_pref.user_id = $2
         LEFT JOIN meal_cooks mc ON mc.meal_id = m.meal_id AND mc.user_id = $2
         WHERE m.group_id = $1
+        AND ($3::timestamp IS NULL OR $4::timestamp IS NULL OR m.date_time BETWEEN $3 AND $4)
+
         GROUP BY m.meal_id, user_pref.preference, mc.user_id
         ORDER BY m.date_time desc 
 `
-	rows, err := db.Query(query, filters.GroupId, userId)
+	rows, err := db.Query(query, filters.GroupId, userId, filters.StartDateFilter, filters.EndDateFilter)
 	var mealCards []MealCard
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"enguete/util/jwt"
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 )
 
@@ -44,4 +45,35 @@ func ValidUUIDCheck(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "UUID is valid"})
+}
+
+func DBNilCheck(c *gin.Context, db *sql.DB) {
+	query := `
+SELECT user_id
+FROM users u
+    	WHERE $1::text IS NULL
+
+`
+
+	rows, err := db.Query(query, nil)
+	if err != nil {
+		log.Println("Error executing query:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database query failed"})
+		return
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		err := rows.Scan(
+			&id,
+		)
+		if err != nil {
+			log.Println("Error scanning row:", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan row"})
+			return
+		}
+		ids = append(ids, id)
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Query executed successfully", "ids": ids})
 }

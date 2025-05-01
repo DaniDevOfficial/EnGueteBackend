@@ -32,7 +32,7 @@ func main() {
 	router.GET("/documentation/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	router.Use(corsMiddleware())
-	dev.RegisterDevRoutes(router)
+	dev.RegisterDevRoutes(router, dbConnection)
 	user.RegisterUserRoute(router, dbConnection)
 	group.RegisterGroupRoute(router, dbConnection)
 	meal.RegisterMealRoute(router, dbConnection)
