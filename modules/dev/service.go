@@ -15,7 +15,7 @@ func CheckValidJWT(c *gin.Context) {
 		return
 	}
 
-	isValid, err := jwt.VerifyToken(authHeader)
+	isValid, _, err := jwt.VerifyToken(authHeader)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "IDk "})
 		return

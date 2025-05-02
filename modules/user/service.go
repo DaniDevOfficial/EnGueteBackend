@@ -85,7 +85,7 @@ func CreateNewUser(c *gin.Context, db *sql.DB) {
 		UserId:   newUserId,
 	}
 
-	refreshToken, err := jwt.CreateRefreshToken(jwtUserData, false, db)
+	refreshToken, err := jwt.CreateRefreshToken(jwtUserData, true, db)
 	if err != nil {
 		log.Println(err)
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Error creating RefreshToken"})

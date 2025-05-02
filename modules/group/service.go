@@ -238,12 +238,8 @@ func GetGroupById(c *gin.Context, db *sql.DB) {
 			return
 		}
 
-		log.Println("Start of week: ", startOfWeek)
-		log.Println("End of week: ", endOfWeek)
-
 		filterRequest.StartDateFilter = &startOfWeek
 		filterRequest.EndDateFilter = &endOfWeek
-		log.Println("Start date filter: ", *filterRequest.StartDateFilter)
 	}
 
 	mealCards, err := GetMealsInGroupDB(filterRequest, jwtPayload.UserId, db)

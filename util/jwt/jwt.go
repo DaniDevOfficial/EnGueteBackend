@@ -25,8 +25,8 @@ func CreateToken(userData JWTUser) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.MapClaims{
 			"UserId":   userData.UserId,
-			"UserName": userData.Username,
-			"Exp":      time.Now().Add(time.Hour * 24).Unix(),
+			"Username": userData.Username,
+			"Exp":      time.Now().Add(time.Minute * 5).Unix(),
 		})
 	tokenString, err := token.SignedString(secretKey)
 	if err != nil {
@@ -35,19 +35,29 @@ func CreateToken(userData JWTUser) (string, error) {
 	return tokenString, nil
 }
 
-func VerifyToken(tokenString string) (bool, error) {
+func VerifyToken(tokenString string) (isValid bool, jwtData JWTPayload, err error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return secretKey, nil
 	})
 
 	if err != nil {
-		return false, err
+		return false, jwtData, err
 	}
 
 	if !token.Valid {
-		return false, nil
+		return false, jwtData, nil
 	}
-	return true, nil
+
+	jwtData, err = DecodeBearer(tokenString)
+	if err != nil {
+		if errors.Is(err, TokenIsNotValidDueToExpirationDate) {
+			return false, jwtData, nil
+
+		}
+		return false, jwtData, err
+	}
+
+	return true, jwtData, nil
 }
 
 var RefreshTokenNotInDbError = errors.New("refresh token not found in database")
@@ -55,26 +65,9 @@ var TokenIsNotValidDueToExpirationDate = errors.New("token is not valid due to e
 
 func VerifyRefreshToken(tokenString string, db *sql.DB) (JWTPayload, error) {
 
-	splitToken := strings.Split(tokenString, ".")
-	if len(splitToken) != 3 {
-		return JWTPayload{}, fmt.Errorf("invalid token format")
-	}
-
-	payloadSegment := splitToken[1]
-	payloadBytes, err := base64.RawURLEncoding.DecodeString(payloadSegment)
-	if err != nil {
-		return JWTPayload{}, fmt.Errorf("failed to decode payload: %v", err)
-	}
-
-	var payload JWTPayload
-	err = json.Unmarshal(payloadBytes, &payload)
-	if err != nil {
-		return JWTPayload{}, fmt.Errorf("failed to unmarshal payload: %v", err)
-	}
-	if payload.Exp > 0 {
-		if payload.Exp < time.Now().Unix() {
-			return payload, TokenIsNotValidDueToExpirationDate
-		}
+	isValid, payload, err := VerifyToken(tokenString)
+	if err != nil || !isValid {
+		return JWTPayload{}, err
 	}
 
 	inDB, err := VerifyRefreshTokenInDB(tokenString, payload.UserId, db)
@@ -94,8 +87,8 @@ func VerifyRefreshTokenInDB(token string, userId string, db *sql.DB) (bool, erro
 	query := `
 		SELECT COUNT(*)
 		FROM refresh_tokens
-		WHERE refresh_token = ?
-		AND user_id = ?
+		WHERE refresh_token = $1
+		AND user_id = $2
 	`
 
 	err := db.QueryRow(query, token, userId).Scan(&count)
@@ -118,10 +111,11 @@ func CreateRefreshToken(userData JWTUser, isTimeBased bool, db *sql.DB) (string,
 			"UserId":   userData.UserId,
 			"Username": userData.Username,
 			"Exp": func() int64 {
+				var timestamp int64 = 0
 				if dateTime != nil {
-					return dateTime.Unix()
+					timestamp = dateTime.Unix()
 				}
-				return 0
+				return timestamp
 			}(),
 		})
 	tokenString, err := token.SignedString(secretKey)
@@ -134,6 +128,7 @@ func CreateRefreshToken(userData JWTUser, isTimeBased bool, db *sql.DB) (string,
 		RefreshToken: tokenString,
 		LifeTime:     dateTime,
 	}
+
 	err = PushRefreshTokenToDB(data, db)
 	if err != nil {
 		log.Println(err)

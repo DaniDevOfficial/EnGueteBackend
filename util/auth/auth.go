@@ -27,7 +27,6 @@ func GetJWTTokenFromHeader(c *gin.Context) (string, error) {
 //	(jwt.JWTPayload, error): Returns the decoded JWT payload if successful, otherwise returns an error.
 func GetJWTPayloadFromHeader(c *gin.Context, db *sql.DB) (jwt.JWTPayload, error) {
 	jwtToken, err := GetJWTTokenFromHeader(c)
-
 	var jwtData jwt.JWTPayload
 	if err != nil {
 		jwtData, newJwtToken, err := CreateNewTokenWithRefreshToken(c, db)
@@ -40,25 +39,20 @@ func GetJWTPayloadFromHeader(c *gin.Context, db *sql.DB) (jwt.JWTPayload, error)
 		return jwtData, err
 	}
 
-	valid, err := jwt.VerifyToken(jwtToken)
+	valid, jwtData, err := jwt.VerifyToken(jwtToken)
 	if err != nil {
 		return jwtData, err
 	}
 	if !valid {
-		jwtData, newJwtToken, err := CreateNewTokenWithRefreshToken(c, db)
+		jwtData, jwtToken, err = CreateNewTokenWithRefreshToken(c, db)
 
 		if err != nil {
 			return jwtData, err
 		}
 
-		c.Header("Authorization", newJwtToken)
-		return jwtData, err
+		c.Header("Authorization", jwtToken)
 	}
 
-	jwtData, err = jwt.DecodeBearer(jwtToken)
-	if err != nil {
-		return jwtData, err
-	}
 	return jwtData, err
 }
 
@@ -67,6 +61,7 @@ func GetRefreshTokenFromHeader(c *gin.Context) (string, error) {
 	if refreshToken == "" {
 		return "", fmt.Errorf("missing refresh token header")
 	}
+
 	return refreshToken, nil
 }
 
@@ -76,6 +71,7 @@ func CreateNewTokenWithRefreshToken(c *gin.Context, db *sql.DB) (jwt.JWTPayload,
 	if err != nil {
 		return jwtData, "", err
 	}
+
 	refreshTokenBody, err := jwt.VerifyRefreshToken(refreshToken, db)
 	if err != nil {
 		return jwtData, "", err
