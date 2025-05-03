@@ -246,6 +246,21 @@ func GetUserInformationById(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, response)
 }
 
+func GetUserGroups(c *gin.Context, db *sql.DB) {
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusUnauthorized, UserError{Error: "Error getting JWT Payload"})
+		return
+	}
+
+	groupData, err := GetUsersGroupByUserIdFromDB(jwtPayload.UserId, db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, UserError{Error: "internal server error"})
+	}
+	c.JSON(http.StatusOK, groupData)
+}
+
 // GetUserGroupsById godoc
 // @Summary Get a user's groups by ID
 // @Description Fetch all groups that a user belongs to by their ID.

@@ -14,6 +14,9 @@ func registerUserRoutes(router *gin.Engine, db *sql.DB) {
 	router.GET("/users/:userId", func(c *gin.Context) {
 		GetUserInformationById(c, db)
 	})
+	router.GET("/users/groups", func(c *gin.Context) {
+		GetUserGroups(c, db)
+	})
 	router.GET("/users/:userId/groups", func(c *gin.Context) {
 		GetUserGroupsById(c, db)
 	})
