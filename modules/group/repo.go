@@ -362,6 +362,8 @@ func CreateNewInviteInDBWithTransaction(inviteData InviteLinkGenerationRequest, 
 	return inviteToken, nil
 }
 
+var ErrNotFound = errors.New("not found")
+
 func ValidateInviteTokenInDB(inviteToken string, db *sql.DB) (string, error) {
 	query := `
 		WITH deleted AS (
@@ -374,7 +376,12 @@ func ValidateInviteTokenInDB(inviteToken string, db *sql.DB) (string, error) {
 
 	var groupId string
 	err := db.QueryRow(query, inviteToken).Scan(&groupId)
-
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", ErrNotFound
+		}
+		return "", err
+	}
 	return groupId, err
 }
 

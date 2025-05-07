@@ -70,9 +70,6 @@ func CheckIfUserIsAllowedToPerformActionViaMealId(mealId string, userId string, 
 func CheckIfUserIsAllowedToPerformAction(groupId string, userId string, actionToPerform string, db *sql.DB) (isAllowedToPerformAction bool, userRoles []string, error error) {
 	userRoles, err := GetUserRolesInGroup(groupId, userId, db)
 	if err != nil {
-		if errors.Is(err, ErrUserIsNotPartOfThisGroup) {
-			return false, userRoles, nil
-		}
 		return false, userRoles, err
 	}
 	return roles.CanPerformAction(userRoles, actionToPerform), userRoles, nil
