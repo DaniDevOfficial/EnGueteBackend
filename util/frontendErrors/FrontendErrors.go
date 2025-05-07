@@ -17,5 +17,8 @@ const (
 	UserDoesNotExistError = "userDoesNotExistError"
 	CreateGroupError      = "createGroupError"
 
+	YouCantKickOrBanYourselfError = "youCantKickOrBanYourselfError"
+	InvalidRoleError              = "invalidRoleError"
+
 	FiltersAreNotValidError = "filtersAreNotValidError"
 )

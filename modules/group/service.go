@@ -30,16 +30,16 @@ import (
 // @Failure 500 {object} GroupError "Internal server error - error during group creation or transaction handling"
 // @Router /groups [post]
 func CreateNewGroup(c *gin.Context, db *sql.DB) {
+	var newGroupData RequestNewGroup
+	if err := c.ShouldBindJSON(&newGroupData); err != nil {
+		responses.GenericBadRequestError(c.Writer)
+		return
+	}
+
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		responses.GenericUnauthorizedError(c.Writer)
 		c.AbortWithStatusJSON(http.StatusUnauthorized, GroupError{Error: "Authorisation is not valid"})
-		return
-	}
-
-	var newGroupData RequestNewGroup
-	if err := c.ShouldBindJSON(&newGroupData); err != nil {
-		responses.GenericBadRequestError(c.Writer)
 		return
 	}
 
@@ -90,15 +90,15 @@ func CreateNewGroup(c *gin.Context, db *sql.DB) {
 }
 
 func DeleteGroup(c *gin.Context, db *sql.DB) {
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
-	if err != nil {
-		responses.GenericUnauthorizedError(c.Writer)
-		return
-	}
-
 	var groupData RequestIdGroup
 	if err := c.ShouldBindQuery(&groupData); err != nil {
 		responses.GenericBadRequestError(c.Writer)
+		return
+	}
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
@@ -131,15 +131,15 @@ func DeleteGroup(c *gin.Context, db *sql.DB) {
 }
 
 func UpdateGroupName(c *gin.Context, db *sql.DB) {
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
-	if err != nil {
-		responses.GenericUnauthorizedError(c.Writer)
-		return
-	}
-
 	var groupData RequestUpdateGroupName
 	if err := c.ShouldBindJSON(&groupData); err != nil {
 		responses.GenericBadRequestError(c.Writer)
+		return
+	}
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
@@ -201,17 +201,17 @@ func UpdateGroupName(c *gin.Context, db *sql.DB) {
 // @Failure 500 {object} GroupError "Internal server error - database error or failure in retrieving group data"
 // @Router /groups/{groupId} [get]
 func GetGroupById(c *gin.Context, db *sql.DB) {
+	var filterRequest FilterGroupRequest
+	if err := c.ShouldBindQuery(&filterRequest); err != nil {
+		log.Println(err)
+		responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.FiltersAreNotValidError, "Error decoding request")
+		return
+	}
+
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		log.Println(err)
 		responses.GenericUnauthorizedError(c.Writer)
-		return
-	}
-
-	var filterRequest FilterGroupRequest
-	if err = c.ShouldBindQuery(&filterRequest); err != nil {
-		log.Println(err)
-		responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.FiltersAreNotValidError, "Error decoding request")
 		return
 	}
 
@@ -279,18 +279,17 @@ func GetGroupById(c *gin.Context, db *sql.DB) {
 // @Failure 500 {object} GroupError "Internal server error - database error or failure in retrieving group members"
 // @Router /groups/{groupId}/members [get]
 func GetGroupMembers(c *gin.Context, db *sql.DB) {
+	var groupData RequestIdGroup
+	if err := c.ShouldBindQuery(&groupData); err != nil {
+		log.Println(err)
+		responses.GenericBadRequestError(c.Writer)
+		return
+	}
+
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		log.Println(err)
 		responses.GenericUnauthorizedError(c.Writer)
-		return
-	}
-
-	var groupData RequestIdGroup
-
-	if err := c.ShouldBindQuery(&groupData); err != nil {
-		log.Println(err)
-		responses.GenericBadRequestError(c.Writer)
 		return
 	}
 
@@ -317,18 +316,20 @@ func GetGroupMembers(c *gin.Context, db *sql.DB) {
 }
 
 func GetGroupMeals(c *gin.Context, db *sql.DB) {
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
-	if err != nil {
-		log.Println(err)
-		responses.GenericUnauthorizedError(c.Writer)
-		return
-	}
 	var groupData RequestGroupMeals
 	if err := c.ShouldBindQuery(&groupData); err != nil {
 		log.Println(err)
 		responses.GenericBadRequestError(c.Writer)
 		return
 	}
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		log.Println(err)
+		responses.GenericUnauthorizedError(c.Writer)
+		return
+	}
+
 	inGroup, err := IsUserInGroup(groupData.GroupId, jwtPayload.UserId, db)
 	if err != nil {
 		log.Println(err)
@@ -380,15 +381,15 @@ func GetGroupMeals(c *gin.Context, db *sql.DB) {
 // @Failure 500 {object} GroupError "Internal server error - issues with invite creation or transaction handling"
 // @Router /groups/invite [post]
 func GenerateInviteLink(c *gin.Context, db *sql.DB) {
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
-	if err != nil {
-		responses.GenericUnauthorizedError(c.Writer)
-		return
-	}
-
 	var inviteRequest InviteLinkGenerationRequest
 	if err := c.ShouldBindJSON(&inviteRequest); err != nil {
 		responses.GenericBadRequestError(c.Writer)
+		return
+	}
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
@@ -446,15 +447,15 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 // @Failure 500 {object} GroupError "Internal server error - error adding user to group"
 // @Router /groups/invite/join/{inviteToken} [post]
 func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
-	if err != nil {
-		responses.GenericUnauthorizedError(c.Writer)
-		return
-	}
-
 	var inviteData RequestInviteToken
 	if err := c.ShouldBindQuery(&inviteData); err != nil {
 		responses.GenericBadRequestError(c.Writer)
+		return
+	}
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
@@ -514,15 +515,15 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 }
 
 func GetAllInviteTokensInAGroup(c *gin.Context, db *sql.DB) {
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
-	if err != nil {
-		responses.GenericUnauthorizedError(c.Writer)
-		return
-	}
-
 	var groupData RequestIdGroup
 	if err := c.ShouldBindQuery(&groupData); err != nil {
 		responses.GenericBadRequestError(c.Writer)
+		return
+	}
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
@@ -563,15 +564,15 @@ func GetAllInviteTokensInAGroup(c *gin.Context, db *sql.DB) {
 // @Failure 500 {object} GroupError "Internal server error - error deleting invite token"
 // @Router /groups/invite/join/{inviteToken} [delete]
 func VoidInviteToken(c *gin.Context, db *sql.DB) {
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
-	if err != nil {
-		responses.GenericUnauthorizedError(c.Writer)
-		return
-	}
-
 	var inviteData RequestInviteToken
 	if err := c.ShouldBindQuery(&inviteData); err != nil {
 		responses.GenericBadRequestError(c.Writer)
+		return
+	}
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
@@ -627,16 +628,16 @@ func VoidInviteToken(c *gin.Context, db *sql.DB) {
 // @Failure 500 {object} GroupError "Error leaving group"
 // @Router /groups/leave/{groupId} [delete]
 func LeaveGroup(c *gin.Context, db *sql.DB) {
-	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
-	if err != nil {
-		responses.GenericUnauthorizedError(c.Writer)
-		return
-	}
-
 	var groupData RequestIdGroup
 	if err := c.ShouldBindQuery(&groupData); err != nil {
 
 		responses.GenericBadRequestError(c.Writer)
+		return
+	}
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 

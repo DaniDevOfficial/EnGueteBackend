@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"enguete/modules/group"
 	"enguete/util/auth"
+	"enguete/util/frontendErrors"
+	"enguete/util/responses"
 	"enguete/util/roles"
 	"errors"
 	"github.com/gin-gonic/gin"
@@ -26,31 +28,37 @@ import (
 func KickUserFromGroup(c *gin.Context, db *sql.DB) {
 	var kickUserData RequestKickUser
 	if err := c.ShouldBind(&kickUserData); err != nil {
-		c.JSON(http.StatusBadRequest, ManagementError{Error: "Error decoding request"})
+		responses.GenericBadRequestError(c.Writer)
 		return
 	}
 
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, ManagementError{Error: "Unauthorized"})
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 	if jwtPayload.UserId == kickUserData.UserId {
-		c.JSON(http.StatusBadRequest, ManagementError{Error: "You can't kick yourself"})
+		responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.YouCantKickOrBanYourselfError, "You can't kick yourself. You need To leave the group")
+		return
 	}
 
 	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformAction(kickUserData.GroupId, jwtPayload.UserId, roles.CanKickUsers, db)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ManagementError{Error: "Internal server error"})
+		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
+			responses.HttpErrorResponse(c.Writer, http.StatusForbidden, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			return
+		}
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusForbidden, ManagementError{Error: "You are not allowed to perform this action"})
+		responses.GenericForbiddenError(c.Writer)
+		return
 	}
 
 	err = KickUSerFromGroupInDB(kickUserData.GroupId, kickUserData.UserId, db)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, ManagementError{Error: "Unauthorized"})
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 
@@ -75,33 +83,39 @@ func KickUserFromGroup(c *gin.Context, db *sql.DB) {
 func BanUserFromGroup(c *gin.Context, db *sql.DB) {
 	var kickUserData RequestKickUser
 	if err := c.ShouldBind(&kickUserData); err != nil {
-		c.JSON(http.StatusBadRequest, ManagementError{Error: "Error decoding request"})
+		responses.GenericBadRequestError(c.Writer)
 		return
 	}
 
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, ManagementError{Error: "Unauthorized"})
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
 	if jwtPayload.UserId == kickUserData.UserId {
-		c.JSON(http.StatusBadRequest, ManagementError{Error: "You can't ban yourself"})
+		responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.YouCantKickOrBanYourselfError, "You can't kick/ban yourself. You need To leave the group")
+		return
 	}
 
 	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformAction(kickUserData.GroupId, jwtPayload.UserId, roles.CanBanUsers, db)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ManagementError{Error: "Internal server error"})
+		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
+			responses.HttpErrorResponse(c.Writer, http.StatusForbidden, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			return
+		}
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusForbidden, ManagementError{Error: "You are not allowed to perform this action"})
+		responses.GenericForbiddenError(c.Writer)
+		return
 	}
 
 	//TODO: either have a seperate function or a follow up, which adds the userId in a blacklist for this specific group
 	err = KickUSerFromGroupInDB(kickUserData.GroupId, kickUserData.UserId, db)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, ManagementError{Error: "Unauthorized"})
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 
@@ -126,28 +140,32 @@ func BanUserFromGroup(c *gin.Context, db *sql.DB) {
 func UnbanUserFromGroup(c *gin.Context, db *sql.DB) {
 	var kickUserData RequestKickUser
 	if err := c.ShouldBind(&kickUserData); err != nil {
-		c.JSON(http.StatusBadRequest, ManagementError{Error: "Error decoding request"})
+		responses.GenericBadRequestError(c.Writer)
 		return
 	}
 
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, ManagementError{Error: "Unauthorized"})
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
 	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformAction(kickUserData.GroupId, jwtPayload.UserId, roles.CanUnbanUser, db)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ManagementError{Error: "Internal server error"})
+		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
+			responses.HttpErrorResponse(c.Writer, http.StatusForbidden, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			return
+		}
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusForbidden, ManagementError{Error: "You are not allowed to perform this action"})
+		responses.GenericForbiddenError(c.Writer)
 	}
 
 	err = UnBanUserFromGroupInDB(kickUserData.GroupId, kickUserData.UserId, db)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ManagementError{Error: "Internal server error"})
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 
@@ -176,30 +194,37 @@ func AddRoleToUser(c *gin.Context, db *sql.DB) {
 
 	role := roles.GetConstViaString(roleData.Role)
 	if role == "" {
-		c.JSON(http.StatusBadRequest, ManagementError{Error: "Invalid role"})
+		responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.InvalidRoleError, "Invalid role")
 		return
 	}
 
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, ManagementError{Error: "Unauthorized"})
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
 	action := "can_promote_to_" + role
 	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformAction(roleData.GroupId, jwtPayload.UserId, action, db)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ManagementError{Error: "Internal server error"})
+		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
+			c.JSON(http.StatusForbidden, ManagementError{Error: "Group does not exist"})
+			return
+		}
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusForbidden, ManagementError{Error: "You are not allowed to perform this action"})
+		responses.GenericForbiddenError(c.Writer)
 		return
 	}
 
 	err = group.AddRoleToUserInGroup(roleData.GroupId, roleData.UserId, role, db)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ManagementError{Error: "Internal server error"})
+		if errors.Is(err, group.ErrNothingHappened) {
+			c.JSON(http.StatusOK, ManagementSuccess{Message: "Role successfully added"})
+			return
+		}
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 
@@ -222,37 +247,42 @@ func AddRoleToUser(c *gin.Context, db *sql.DB) {
 func RemoveRoleFromUser(c *gin.Context, db *sql.DB) {
 	var roleData RequestRoleData
 	if err := c.ShouldBindJSON(&roleData); err != nil {
-		c.JSON(http.StatusBadRequest, ManagementError{Error: "Error decoding request"})
+		responses.GenericBadRequestError(c.Writer)
 		return
 	}
 
 	role := roles.GetConstViaString(roleData.Role)
 	if role == "" {
-		c.JSON(http.StatusBadRequest, ManagementError{Error: "Invalid role"})
+		responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.InvalidRoleError, "Invalid role")
 		return
 	}
 
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, ManagementError{Error: "Unauthorized"})
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
 	action := "can_demote_from_" + role
 	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformAction(roleData.GroupId, jwtPayload.UserId, action, db)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ManagementError{Error: "Internal server error"})
+		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
+			responses.HttpErrorResponse(c.Writer, http.StatusForbidden, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			return
+		}
+
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	if !canPerformAction {
-		c.JSON(http.StatusForbidden, ManagementError{Error: "You are not allowed to perform this action"})
+		responses.GenericForbiddenError(c.Writer)
 		return
 	}
 
 	err = group.RemoveRoleFromUserInGroup(roleData.GroupId, roleData.UserId, role, db)
 	if err != nil {
 		if errors.Is(err, group.ErrNothingHappened) {
-			c.JSON(http.StatusBadRequest, ManagementError{Error: "User did not have this role"})
+			c.JSON(http.StatusOK, ManagementSuccess{Message: "Role successfully removed"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, ManagementError{Error: "Internal server error"})

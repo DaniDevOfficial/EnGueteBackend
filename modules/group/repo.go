@@ -52,6 +52,12 @@ func AddRoleToUserInGroupWithTransaction(groupId string, userId string, role str
 func AddRoleToUserInGroup(groupId string, userId string, role string, db *sql.DB) error {
 	query := `INSERT INTO user_group_roles (group_id, user_id, role) VALUES ($1, $2, $3)`
 	_, err := db.Exec(query, groupId, userId, role)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNothingHappened
+		}
+		return err
+	}
 	return err
 }
 
