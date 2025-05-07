@@ -28,5 +28,7 @@ const (
 	UsernameIsAlreadyTakenError  = "usernameIsAlreadyTakenError"
 	WrongUsernameOrPasswordError = "wrongUsernameOrPasswordError"
 
+	MealDoesNotExistError = "mealDoesNotExistError"
+
 	FiltersAreNotValidError = "filtersAreNotValidError"
 )

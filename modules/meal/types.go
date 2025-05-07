@@ -95,6 +95,6 @@ type Meal struct {
 	MealParticipantInformation []MealParticipant `json:"mealParticipants"`
 }
 
-type RequestMeal struct {
+type RequestMealId struct {
 	MealId string `form:"mealId" binding:"required,uuid"`
 }
