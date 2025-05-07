@@ -3,14 +3,15 @@ package user
 import (
 	"database/sql"
 	"enguete/util/auth"
+	"enguete/util/frontendErrors"
 	"enguete/util/hashing"
 	"enguete/util/jwt"
+	"enguete/util/responses"
 	"enguete/util/validation"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
-	"strings"
 )
 
 // CreateNewUser godoc
@@ -29,42 +30,41 @@ func CreateNewUser(c *gin.Context, db *sql.DB) {
 	var newUser RequestNewUser
 	if err := c.ShouldBindJSON(&newUser); err != nil {
 		log.Println(err)
-
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Error decoding request"})
+		responses.GenericBadRequestError(c.Writer)
 		return
 	}
-	isValid, err := validation.IsValidPassword(newUser.Password)
+	err := validation.IsValidPassword(newUser.Password)
 	if err != nil {
-		userError := UserError{
-			Error: "invalid Password Struct",
+		if errors.Is(err, validation.PasswordFormatNeedsUpperLowerSpecialError) {
+			responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.PasswordFormatNeedsUpperLowerSpecialError, "Password needs Upper, lower and special characters and at least one number")
+			return
 		}
-		c.JSON(http.StatusBadRequest, userError)
-		return
-	}
-	if !isValid {
-		userError := UserError{
-			Error: "invalid Password Struct",
+		if errors.Is(err, validation.PasswordFormatTooShortError) {
+			responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.PasswordFormatTooShortError, "The Password needs to be at least 8 letters long")
+			return
 		}
-		c.JSON(http.StatusBadRequest, userError)
+		if errors.Is(err, validation.PasswordToLongError) {
+			responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.PasswordFormatTooLongError, "The Password is to long, max length is 127 letters")
+			return
+		}
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
 	userId, err := GetUserIdByName(newUser.Username, db)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
 		log.Println(err)
-
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error checking for users"})
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
-
 	if userId != "" {
-		c.JSON(http.StatusConflict, gin.H{"error": "User Does already exist"})
+		responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.UsernameIsAlreadyTakenError, "Username is already taken")
 		return
 	}
 
 	hashedPassword, err := hashing.HashPassword(newUser.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Hashing error"})
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 
@@ -76,8 +76,7 @@ func CreateNewUser(c *gin.Context, db *sql.DB) {
 
 	newUserId, err := CreateUserInDB(userInDB, db)
 	if err != nil {
-		log.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error Creating User"})
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	jwtUserData := jwt.JWTUser{
@@ -88,13 +87,13 @@ func CreateNewUser(c *gin.Context, db *sql.DB) {
 	refreshToken, err := jwt.CreateRefreshToken(jwtUserData, true, db)
 	if err != nil {
 		log.Println(err)
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Error creating RefreshToken"})
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 
 	jwtToken, err := jwt.CreateToken(jwtUserData)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Error creating JWT"})
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 
@@ -120,19 +119,23 @@ func SignIn(c *gin.Context, db *sql.DB) {
 	var credentials SignInCredentials
 	if err := c.ShouldBindJSON(&credentials); err != nil {
 		log.Println(err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Error decoding request"})
+		responses.GenericBadRequestError(c.Writer)
 		return
 	}
 
 	userData, err := GetUserByName(credentials.Username, db)
 	if err != nil {
 		log.Println(err)
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Wrong USERNAME Or Password"})
+		if errors.Is(err, ErrUserNotFound) {
+			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.UserDoesNotExistError, "User does not exist")
+			return
+		}
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 
 	if !hashing.CheckHashedString(userData.PasswordHash, credentials.Password) {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Wrong Username Or Password"})
+		responses.HttpErrorResponse(c.Writer, http.StatusUnauthorized, frontendErrors.WrongUsernameOrPasswordError, "Wrong Username Or Password")
 		return
 	}
 
@@ -143,14 +146,13 @@ func SignIn(c *gin.Context, db *sql.DB) {
 
 	refreshToken, err := jwt.CreateRefreshToken(jwtUserData, false, db)
 	if err != nil {
-		log.Println(err)
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Error creating RefreshToken"})
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 
 	jwtToken, err := jwt.CreateToken(jwtUserData)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Error creating JWT"})
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	c.Header("Authorization", jwtToken)
@@ -162,15 +164,14 @@ func SignIn(c *gin.Context, db *sql.DB) {
 func Logout(c *gin.Context, db *sql.DB) {
 	refreshToken, err := auth.GetRefreshTokenFromHeader(c)
 	if err != nil {
-		log.Println(err)
-		c.JSON(http.StatusUnauthorized, UserError{Error: "Error getting JWT Payload"})
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
 	err = jwt.VoidRefreshTokenInDB(refreshToken, db)
 	if err != nil {
 		log.Println(err)
-		c.JSON(http.StatusInternalServerError, UserError{Error: "Error logging out"})
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 
@@ -181,14 +182,18 @@ func CheckAuth(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		log.Println(err)
-		c.JSON(http.StatusUnauthorized, UserError{Error: "Error getting JWT Payload"})
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
 	userData, err := GetUserByIdFromDB(jwtPayload.UserId, db)
 	if err != nil {
 		log.Println(err)
-		c.JSON(http.StatusUnauthorized, UserError{Error: "Error getting JWT Payload"})
+		if errors.Is(err, ErrUserNotFound) {
+			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.UserDoesNotExistError, "User does not exist")
+			return
+		}
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 
@@ -217,24 +222,24 @@ func GetUserInformationById(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		log.Println(err)
-		c.JSON(http.StatusUnauthorized, UserError{Error: "Error getting JWT Payload"})
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
 	userData, err := GetUserByIdFromDB(jwtPayload.UserId, db)
-	if errors.Is(err, sql.ErrNoRows) {
-		c.AbortWithStatusJSON(http.StatusNotFound, UserError{Error: "user not found"})
-		return
-	}
-
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, UserError{Error: "internal server error"})
+		if errors.Is(err, ErrUserNotFound) {
+			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.UserDoesNotExistError, "User does not exist")
+			return
+		}
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 
 	groupData, err := GetUsersGroupByUserIdFromDB(jwtPayload.UserId, db)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, UserError{Error: "internal server error"})
+		responses.GenericInternalServerError(c.Writer)
+		return
 	}
 
 	response := ResponseUserData{
@@ -250,54 +255,16 @@ func GetUserGroups(c *gin.Context, db *sql.DB) {
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		log.Println(err)
-		c.JSON(http.StatusUnauthorized, UserError{Error: "Error getting JWT Payload"})
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
 	groupData, err := GetUsersGroupByUserIdFromDB(jwtPayload.UserId, db)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, UserError{Error: "internal server error"})
+		responses.GenericInternalServerError(c.Writer)
+		return
 	}
 	c.JSON(http.StatusOK, groupData)
-}
-
-// GetUserGroupsById godoc
-// @Summary Get a user's groups by ID
-// @Description Fetch all groups that a user belongs to by their ID.
-// @Tags users
-// @Accept json
-// @Produce json
-// @Param id path string true "User ID"
-// @Success 200 {object} ResponseUserGroups
-// @Failure 400 {object} UserError "Invalid user ID"
-// @Failure 404 {object} UserError "User not found"
-// @Failure 500 {object} UserError "Server error retrieving user groups"
-// @Router /users/{userId}/groups [get]
-func GetUserGroupsById(c *gin.Context, db *sql.DB) {
-
-	userId := c.Param("userId")
-	userId = strings.Trim(userId, " ")
-	if userId == "" {
-		c.AbortWithStatusJSON(http.StatusBadRequest, UserError{Error: "No userId attached"})
-		return
-	}
-
-	userGroups, err := GetUsersGroupByUserIdFromDB(userId, db)
-	if errors.Is(err, sql.ErrNoRows) {
-		c.AbortWithStatusJSON(http.StatusNotFound, UserError{Error: "user not found"})
-		return
-	}
-
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, UserError{Error: "shit hit the fan"})
-		return
-	}
-
-	response := ResponseUserGroups{
-		Groups: userGroups,
-	}
-
-	c.JSON(http.StatusOK, response)
 }
 
 // DeleteUserWithJWT godoc
@@ -316,14 +283,14 @@ func DeleteUserWithJWT(c *gin.Context, db *sql.DB) {
 	decodedJWT, err := auth.GetJWTPayloadFromHeader(c, db)
 
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, UserError{Error: "JWT Token is not valid"})
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
 	// TODO: Do a email for validation and then handle the delete in another function
 	_, err = DeleteUserInDB(decodedJWT.UserId, db)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, UserError{Error: "user wasn't deleted"})
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 
@@ -351,31 +318,28 @@ func UpdateUsername(c *gin.Context, db *sql.DB) {
 
 	if err := c.ShouldBindJSON(&changeUsernameData); err != nil {
 		log.Println(err)
-		errorMessage := UserError{
-			Error: "Error decoding request",
-		}
-		c.JSON(http.StatusBadRequest, errorMessage)
+		responses.GenericBadRequestError(c.Writer)
 		return
 	}
 
 	jwtTokenData, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 	userId, err := GetUserIdByName(changeUsernameData.Username, db)
 
 	if userId != "" || err != nil {
-		c.JSON(http.StatusBadRequest, UserError{Error: "Username is already in use"})
+		responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.UsernameIsAlreadyTakenError, "Username is already taken")
 		return
 	}
 	err = UpdateUsernameInDB(changeUsernameData.Username, jwtTokenData.UserId, db)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, UserError{Error: "User not found"})
+			responses.GenericNotFoundError(c.Writer)
 			return
 		}
-
-		c.JSON(http.StatusInternalServerError, UserError{Error: "Internal server error"})
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	successMessage := UserSuccess{
@@ -400,52 +364,58 @@ func UpdateUserPassword(c *gin.Context, db *sql.DB) {
 	var updatePasswordData RequestChangePassword
 	if err := c.ShouldBindJSON(&updatePasswordData); err != nil {
 		log.Println(err)
-		c.JSON(http.StatusBadRequest, UserError{Error: "Error decoding request"})
+		responses.GenericBadRequestError(c.Writer)
 		return
 	}
 
-	isValid, err := validation.IsValidPassword(updatePasswordData.NewPassword)
+	err := validation.IsValidPassword(updatePasswordData.NewPassword)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, UserError{Error: "Password isn't valid"})
-		return
-	}
-
-	if !isValid {
-		c.JSON(http.StatusBadRequest, UserError{Error: "Password isnt valid"})
+		if errors.Is(err, validation.PasswordFormatNeedsUpperLowerSpecialError) {
+			responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.PasswordFormatNeedsUpperLowerSpecialError, "Password needs Upper, lower and special characters and at least one number")
+			return
+		}
+		if errors.Is(err, validation.PasswordFormatTooShortError) {
+			responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.PasswordFormatTooShortError, "The Password needs to be at least 8 letters long")
+			return
+		}
+		if errors.Is(err, validation.PasswordToLongError) {
+			responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.PasswordFormatTooLongError, "The Password is to long, max length is 127 letters")
+			return
+		}
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, UserError{Error: "JWT Token is not valid"})
+		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
 
 	userData, err := GetUserByIdFromDB(jwtPayload.UserId, db)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, UserError{Error: "User not found"})
+		if errors.Is(err, ErrUserNotFound) {
+			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.UserDoesNotExistError, "User does not exist")
+		}
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	if !hashing.CheckHashedString(userData.PasswordHash, updatePasswordData.OldPassword) {
-
-		c.AbortWithStatusJSON(http.StatusBadRequest, UserError{Error: "Your Old password doesnt match"})
+		responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.PasswordDoesNotMatchError, "Wrong Password")
 		return
 	}
 
 	hashedPassword, err := hashing.HashPassword(updatePasswordData.NewPassword)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, UserError{Error: "Error hashing password"})
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 
 	err = UpdatePasswordInDb(hashedPassword, jwtPayload.UserId, db)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, UserError{Error: "Error updating password"})
+		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 
-	successMessage := UserSuccess{
-		Message: "Password updated Successfully",
-	}
-	c.JSON(http.StatusOK, successMessage)
+	c.JSON(http.StatusOK, UserSuccess{Message: "Password updated Successfully"})
 }

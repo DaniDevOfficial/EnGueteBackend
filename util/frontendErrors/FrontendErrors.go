@@ -20,5 +20,13 @@ const (
 	YouCantKickOrBanYourselfError = "youCantKickOrBanYourselfError"
 	InvalidRoleError              = "invalidRoleError"
 
+	PasswordFormatTooShortError               = "passwordFormatTooShortError"
+	PasswordFormatNeedsUpperLowerSpecialError = "passwordFormatNeedsUpperLowerSpecialError"
+	PasswordFormatTooLongError                = "passwordFormatTooLongError"
+	PasswordDoesNotMatchError                 = "passwordDoesNotMatchError"
+
+	UsernameIsAlreadyTakenError  = "usernameIsAlreadyTakenError"
+	WrongUsernameOrPasswordError = "wrongUsernameOrPasswordError"
+
 	FiltersAreNotValidError = "filtersAreNotValidError"
 )

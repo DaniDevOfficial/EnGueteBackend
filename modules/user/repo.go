@@ -30,6 +30,9 @@ func GetUserByName(username string, db *sql.DB) (UserFromDB, error) {
 	row := db.QueryRow(query, username)
 	var userData UserFromDB
 	err := row.Scan(&userData.Username, &userData.Email, &userData.PasswordHash, &userData.UserId)
+	if errors.Is(err, sql.ErrNoRows) {
+		return UserFromDB{}, ErrUserNotFound
+	}
 	return userData, err
 }
 
@@ -48,6 +51,9 @@ func GetUserByIdFromDB(userId string, db *sql.DB) (UserFromDB, error) {
 
 	var userData UserFromDB
 	err := row.Scan(&userData.Username, &userData.Email, &userData.PasswordHash, &userData.UserId)
+	if errors.Is(err, sql.ErrNoRows) {
+		return UserFromDB{}, ErrUserNotFound
+	}
 	return userData, err
 }
 

@@ -8,18 +8,25 @@ import (
 
 const (
 	minLength = 8
+	maxLength = 127
 )
 
-func IsValidPassword(password string) (bool, error) {
+var PasswordFormatNeedsUpperLowerSpecialError = fmt.Errorf("password needs Upper, lower and special characters and at least one number")
+var PasswordFormatTooShortError = fmt.Errorf("The Password needs to be at least " + strconv.Itoa(minLength) + " letters long")
+var PasswordToLongError = fmt.Errorf("The Password is to long, max length is " + strconv.Itoa(maxLength) + " letters")
+
+func IsValidPassword(password string) error {
 	if len(password) < minLength {
-		return false, fmt.Errorf("The Password needs to be at least " + strconv.Itoa(minLength) + " letters long")
+		return PasswordFormatTooShortError
 	}
-	log.Println(password)
+	if len(password) > maxLength {
+		return PasswordToLongError
+	}
 	if !checkForCharacters(password) {
-		return false, fmt.Errorf("password needs Upper, lower and special characters and at least one number")
+		return PasswordFormatNeedsUpperLowerSpecialError
 	}
 
-	return true, nil
+	return nil
 }
 
 func checkForCharacters(password string) bool {
