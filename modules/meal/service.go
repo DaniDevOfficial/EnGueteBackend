@@ -46,14 +46,14 @@ func CreateNewMeal(c *gin.Context, db *sql.DB) {
 	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformAction(newMeal.GroupId, jwtPayload.UserId, roles.CanCreateMeal, db)
 	if err != nil {
 		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	if !canPerformAction {
-		responses.GenericForbiddenError(c.Writer)
+		responses.GenericNotAllowedToPerformActionError(c.Writer)
 		return
 	}
 
@@ -83,7 +83,7 @@ func GetMealById(c *gin.Context, db *sql.DB) {
 	groupId, err := group.IsUserInGroupViaMealId(mealInfo.MealId, jwtPayload.UserId, db)
 	if err != nil {
 		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 		responses.GenericInternalServerError(c.Writer)
@@ -154,7 +154,7 @@ func DeleteMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !canPerformAction {
-		responses.GenericForbiddenError(c.Writer)
+		responses.GenericNotAllowedToPerformActionError(c.Writer)
 		return
 	}
 
@@ -197,14 +197,14 @@ func ChangeMealClosedFlag(c *gin.Context, db *sql.DB) { //TODO: Functionality of
 	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(updateClosedFlag.MealId, jwtPayload.UserId, roles.CanChangeMealFlags, db)
 	if err != nil {
 		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	if !canPerformAction {
-		responses.GenericForbiddenError(c.Writer)
+		responses.GenericNotAllowedToPerformActionError(c.Writer)
 		return
 	}
 
@@ -249,14 +249,14 @@ func ChangeMealFulfilledFlag(c *gin.Context, db *sql.DB) {
 	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(updateFulfilledFlag.MealId, jwtPayload.UserId, roles.CanChangeMealFlags, db)
 	if err != nil {
 		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	if !canPerformAction {
-		responses.GenericForbiddenError(c.Writer)
+		responses.GenericNotAllowedToPerformActionError(c.Writer)
 		return
 	}
 
@@ -297,7 +297,7 @@ func UpdatePreference(c *gin.Context, db *sql.DB) {
 	_, err = group.IsUserInGroupViaMealId(updatePreference.MealId, updatePreference.UserId, db)
 	if err != nil {
 		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 		responses.GenericInternalServerError(c.Writer)
@@ -308,13 +308,13 @@ func UpdatePreference(c *gin.Context, db *sql.DB) {
 		canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(updatePreference.MealId, jwtPayload.UserId, roles.CanForceMealPreferenceAndCooking, db)
 		if err != nil {
 			if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
-				responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+				responses.GenericGroupDoesNotExistError(c.Writer)
 				return
 			}
 			return
 		}
 		if !canPerformAction {
-			responses.GenericForbiddenError(c.Writer)
+			responses.GenericNotAllowedToPerformActionError(c.Writer)
 			return
 		}
 	}
@@ -378,14 +378,14 @@ func UpdateMealTitle(c *gin.Context, db *sql.DB) {
 	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newTitle.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
 	if err != nil {
 		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	if !canPerformAction {
-		responses.GenericForbiddenError(c.Writer)
+		responses.GenericNotAllowedToPerformActionError(c.Writer)
 		return
 	}
 
@@ -428,14 +428,14 @@ func UpdateMealType(c *gin.Context, db *sql.DB) {
 	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newType.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
 	if err != nil {
 		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	if !canPerformAction {
-		responses.GenericForbiddenError(c.Writer)
+		responses.GenericNotAllowedToPerformActionError(c.Writer)
 		return
 	}
 
@@ -472,7 +472,7 @@ func UpdateMealNotes(c *gin.Context, db *sql.DB) {
 	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newNotes.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
 	if err != nil {
 		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 
@@ -481,7 +481,7 @@ func UpdateMealNotes(c *gin.Context, db *sql.DB) {
 
 	}
 	if !canPerformAction {
-		responses.GenericForbiddenError(c.Writer)
+		responses.GenericNotAllowedToPerformActionError(c.Writer)
 		return
 	}
 
@@ -524,14 +524,14 @@ func UpdateMealScheduledAt(c *gin.Context, db *sql.DB) {
 	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformActionViaMealId(newScheduledAt.MealId, jwtPayload.UserId, roles.CanUpdateMeal, db)
 	if err != nil {
 		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	if !canPerformAction {
-		responses.GenericForbiddenError(c.Writer)
+		responses.GenericNotAllowedToPerformActionError(c.Writer)
 		return
 	}
 

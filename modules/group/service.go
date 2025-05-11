@@ -105,7 +105,7 @@ func DeleteGroup(c *gin.Context, db *sql.DB) {
 	canPerformAction, _, err := CheckIfUserIsAllowedToPerformAction(groupData.GroupId, jwtPayload.UserId, roles.CanDeleteGroup, db)
 	if err != nil {
 		if errors.Is(err, ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 		responses.GenericInternalServerError(c.Writer)
@@ -119,7 +119,7 @@ func DeleteGroup(c *gin.Context, db *sql.DB) {
 	err = DeleteGroupInDB(groupData.GroupId, db)
 	if err != nil {
 		if errors.Is(err, ErrNothingHappened) {
-			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 
@@ -152,7 +152,7 @@ func UpdateGroupName(c *gin.Context, db *sql.DB) {
 	canPerformAction, _, err := CheckIfUserIsAllowedToPerformAction(groupData.GroupId, jwtPayload.UserId, roles.CanUpdateGroup, db)
 	if err != nil {
 		if errors.Is(err, ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 		responses.GenericInternalServerError(c.Writer)
@@ -168,7 +168,7 @@ func UpdateGroupName(c *gin.Context, db *sql.DB) {
 		_ = tx.Rollback()
 
 		if errors.Is(err, ErrNothingHappened) {
-			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 
@@ -221,7 +221,7 @@ func GetGroupById(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !inDB {
-		c.JSON(http.StatusForbidden, GroupError{Error: "You are not in this group or it doesnt exist"})
+		responses.GenericForbiddenError(c.Writer)
 		return
 	}
 
@@ -301,7 +301,7 @@ func GetGroupMembers(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !inGroup {
-		responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "This group doesnt exist")
+		responses.GenericGroupDoesNotExistError(c.Writer)
 		return
 	}
 
@@ -337,7 +337,7 @@ func GetGroupMeals(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !inGroup {
-		responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "This group doesnt exist")
+		responses.GenericGroupDoesNotExistError(c.Writer)
 		return
 	}
 	var filterRequest FilterGroupRequest
@@ -396,14 +396,14 @@ func GenerateInviteLink(c *gin.Context, db *sql.DB) {
 	canPerformAction, _, err := CheckIfUserIsAllowedToPerformAction(inviteRequest.GroupId, jwtPayload.UserId, roles.CanCreateInviteLinks, db)
 	if err != nil {
 		if errors.Is(err, ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "This group doesnt exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	if !canPerformAction {
-		responses.GenericForbiddenError(c.Writer)
+		responses.GenericNotAllowedToPerformActionError(c.Writer)
 		return
 	}
 
@@ -530,14 +530,14 @@ func GetAllInviteTokensInAGroup(c *gin.Context, db *sql.DB) {
 	canPerformAction, _, err := CheckIfUserIsAllowedToPerformAction(groupData.GroupId, jwtPayload.UserId, roles.CanViewInviteLinks, db)
 	if err != nil {
 		if errors.Is(err, ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	if !canPerformAction {
-		responses.GenericForbiddenError(c.Writer)
+		responses.GenericNotAllowedToPerformActionError(c.Writer)
 		return
 	}
 
@@ -589,14 +589,14 @@ func VoidInviteToken(c *gin.Context, db *sql.DB) {
 	canPerformAction, _, err := CheckIfUserIsAllowedToPerformAction(groupId, jwtPayload.UserId, roles.CanVoidInviteLinks, db)
 	if err != nil {
 		if errors.Is(err, ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	if !canPerformAction {
-		responses.GenericForbiddenError(c.Writer)
+		responses.GenericNotAllowedToPerformActionError(c.Writer)
 		return
 	}
 
@@ -651,7 +651,7 @@ func LeaveGroup(c *gin.Context, db *sql.DB) {
 	if err != nil {
 		_ = tx.Rollback()
 		if errors.Is(err, ErrNoMatchingGroupOrUser) {
-			responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 		responses.GenericInternalServerError(c.Writer)

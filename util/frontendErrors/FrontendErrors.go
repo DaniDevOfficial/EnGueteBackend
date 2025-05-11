@@ -8,6 +8,8 @@ const (
 	InternalServerError = "internalServerError"
 	BadRequestError     = "badRequestError"
 
+	NotAllowedToPerformActionError = "youAreNotAllowedToPerformThisAction"
+
 	NotAllowedToDeleteGroupError = "notAllowedToDeleteGroupError"
 	NotAllowedToUpdateGroupError = "notAllowedToUpdateGroupError"
 	GroupDoesNotExistError       = "groupDoesNotExistError"

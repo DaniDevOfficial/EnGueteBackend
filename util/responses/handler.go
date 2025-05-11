@@ -39,8 +39,17 @@ func GenericUnauthorizedError(w http.ResponseWriter) {
 func GenericForbiddenError(w http.ResponseWriter) {
 	HttpErrorResponse(w, http.StatusForbidden, frontendErrors.ForbiddenError, "You do not have permission to perform this action")
 }
+
 func GenericNotFoundError(w http.ResponseWriter) {
 	HttpErrorResponse(w, http.StatusNotFound, frontendErrors.NotFoundError, "The requested resource was not found")
+}
+
+func GenericNotAllowedToPerformActionError(w http.ResponseWriter) {
+	HttpErrorResponse(w, http.StatusForbidden, frontendErrors.NotAllowedToPerformActionError, "You are not allowed to perform this action")
+}
+
+func GenericGroupDoesNotExistError(w http.ResponseWriter) {
+	HttpErrorResponse(w, http.StatusNotFound, frontendErrors.GroupDoesNotExistError, "The group does not exist")
 }
 
 func ResponseWithJSON(w http.ResponseWriter, response interface{}, statusCode int) {

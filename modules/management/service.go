@@ -45,14 +45,14 @@ func KickUserFromGroup(c *gin.Context, db *sql.DB) {
 	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformAction(kickUserData.GroupId, jwtPayload.UserId, roles.CanKickUsers, db)
 	if err != nil {
 		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusForbidden, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	if !canPerformAction {
-		responses.GenericForbiddenError(c.Writer)
+		responses.GenericNotAllowedToPerformActionError(c.Writer)
 		return
 	}
 
@@ -101,14 +101,14 @@ func BanUserFromGroup(c *gin.Context, db *sql.DB) {
 	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformAction(kickUserData.GroupId, jwtPayload.UserId, roles.CanBanUsers, db)
 	if err != nil {
 		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusForbidden, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	if !canPerformAction {
-		responses.GenericForbiddenError(c.Writer)
+		responses.GenericNotAllowedToPerformActionError(c.Writer)
 		return
 	}
 
@@ -153,14 +153,14 @@ func UnbanUserFromGroup(c *gin.Context, db *sql.DB) {
 	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformAction(kickUserData.GroupId, jwtPayload.UserId, roles.CanUnbanUser, db)
 	if err != nil {
 		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusForbidden, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 	if !canPerformAction {
-		responses.GenericForbiddenError(c.Writer)
+		responses.GenericNotAllowedToPerformActionError(c.Writer)
 	}
 
 	err = UnBanUserFromGroupInDB(kickUserData.GroupId, kickUserData.UserId, db)
@@ -214,7 +214,7 @@ func AddRoleToUser(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !canPerformAction {
-		responses.GenericForbiddenError(c.Writer)
+		responses.GenericNotAllowedToPerformActionError(c.Writer)
 		return
 	}
 
@@ -267,7 +267,7 @@ func RemoveRoleFromUser(c *gin.Context, db *sql.DB) {
 	canPerformAction, _, err := group.CheckIfUserIsAllowedToPerformAction(roleData.GroupId, jwtPayload.UserId, action, db)
 	if err != nil {
 		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
-			responses.HttpErrorResponse(c.Writer, http.StatusForbidden, frontendErrors.GroupDoesNotExistError, "Group does not exist")
+			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
 
@@ -275,7 +275,7 @@ func RemoveRoleFromUser(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if !canPerformAction {
-		responses.GenericForbiddenError(c.Writer)
+		responses.GenericNotAllowedToPerformActionError(c.Writer)
 		return
 	}
 
