@@ -3,6 +3,7 @@ package group
 import (
 	"database/sql"
 	"enguete/modules/user"
+	"enguete/util/GenericTypes"
 	"enguete/util/auth"
 	"enguete/util/dates"
 	"enguete/util/frontendErrors"
@@ -674,4 +675,39 @@ func LeaveGroup(c *gin.Context, db *sql.DB) {
 	}
 
 	c.JSON(http.StatusOK, GroupSuccess{Message: "User left group"})
+}
+
+func SyncAllGroups(c *gin.Context, db *sql.DB) {
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		responses.GenericUnauthorizedError(c.Writer)
+		return
+	}
+
+	var request GenericTypes.LastUpdatedRequest
+	if err := c.ShouldBindQuery(&request); err != nil {
+		responses.GenericBadRequestError(c.Writer)
+		log.Println(err)
+		return
+	}
+
+	groups, err := GetAllGroupsForUser(jwtPayload.UserId, db)
+	if err != nil {
+		log.Println(err)
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+	deleteGroupIds, err := GetAllDeletedGroupsForUser(jwtPayload.UserId, request.LastUpdated, db)
+	if err != nil {
+		log.Println(err)
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+
+	response := AllGroupsSyncResponse{
+		Groups:     groups,
+		DeletedIds: deleteGroupIds,
+	}
+	c.JSON(http.StatusOK, response)
+
 }

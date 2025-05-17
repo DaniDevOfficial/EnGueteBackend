@@ -91,3 +91,8 @@ type FilterGroupRequest struct {
 	AmICook         int    `form:"amICook"`
 	Preference      string `form:"preference"`
 }
+
+type AllGroupsSyncResponse struct {
+	Groups     []GroupInfo `json:"groups"`
+	DeletedIds []string    `json:"deletedIds"`
+}

@@ -2,6 +2,7 @@ package group
 
 import (
 	"database/sql"
+	"enguete/util/roles"
 	"errors"
 	"github.com/lib/pq"
 )
@@ -483,4 +484,86 @@ func RemovePreferencesInOpenMealsInGroup(userId string, groupId string, tx *sql.
 `
 	_, err := tx.Exec(query, userId, groupId)
 	return err
+}
+
+func GetAllGroupsForUser(userId string, db *sql.DB) ([]GroupInfo, error) {
+	query := `
+		SELECT 
+			g.group_id,
+			g.group_name,
+			COUNT(DISTINCT ug.user_id) AS user_count,
+			ARRAY_AGG(COALESCE(ur.role, '')) AS user_roles
+		FROM groups g 
+		LEFT JOIN user_groups ug ON ug.group_id = g.group_id AND ug.user_id = $1
+		LEFT JOIN user_group_roles ur ON ur.group_id = g.group_id AND ur.user_id = $1
+
+)
+		GROUP BY g.group_id
+	`
+	//TODO: add deleted check
+	/**
+			WHERE g.deletedAt IS NULL
+	AND (
+	$2::timestamp IS NULL
+	OR GREATEST(
+		COALESCE(g.updated_at, 'epoch'),
+		COALESCE(ug.updated_at, 'epoch'),
+		COALESCE(ur.updated_at, 'epoch')
+	) > $2::timestamp
+	*/
+	rows, err := db.Query(query, userId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var groups []GroupInfo
+	for rows.Next() {
+		var group GroupInfo
+		var userRoles pq.StringArray
+
+		err := rows.Scan(&group.GroupId, &group.GroupName, &group.UserCount, &userRoles)
+		if err != nil {
+			return nil, err
+		}
+		group.UserRoles = userRoles
+		group.UserRoleRights = roles.GetAllAllowedActionsForRoles(userRoles)
+		groups = append(groups, group)
+	}
+
+	return groups, nil
+}
+
+func GetAllDeletedGroupsForUser(userId string, lastRequestDatetime *string, db *sql.DB) ([]string, error) {
+	query := `
+		SELECT g.group_id
+		FROM groups g
+		JOIN user_groups ug ON ug.group_id = g.group_id
+		WHERE ug.user_id = $1
+		AND $2 = $2
+	`
+	/**
+	  AND g.deletedAt IS NOT NULL
+	  AND ($2::timestamp IS NULL OR g.deletedAt > $2::timestamp)
+	*/
+	rows, err := db.Query(query, userId, lastRequestDatetime)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var groupIds []string
+	for rows.Next() {
+		var groupId string
+		if err := rows.Scan(&groupId); err != nil {
+			return nil, err
+		}
+		groupIds = append(groupIds, groupId)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return groupIds, nil
 }
