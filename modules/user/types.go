@@ -32,10 +32,10 @@ type ResponseUserData struct {
 }
 
 type GroupCard struct {
-	GroupName             string `json:"groupName"`
-	GroupId               string `json:"groupId"`
-	AmountOfPeopleInGroup int    `json:"amountOfPeopleInGroup"`
-	NextMealDate          string `json:"nextMealDate"`
+	GroupName    string `json:"groupName"`
+	GroupId      string `json:"groupId"`
+	UserCount    int    `json:"userCount"`
+	NextMealDate string `json:"nextMealDate"`
 }
 
 type DBNewUser struct {

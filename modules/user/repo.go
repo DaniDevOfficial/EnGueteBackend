@@ -91,7 +91,7 @@ func GetUsersGroupByUserIdFromDB(userId string, db *sql.DB) ([]GroupCard, error)
 
 	for rows.Next() {
 		var thisUserGroup GroupCard
-		err := rows.Scan(&thisUserGroup.GroupId, &thisUserGroup.GroupName, &thisUserGroup.AmountOfPeopleInGroup)
+		err := rows.Scan(&thisUserGroup.GroupId, &thisUserGroup.GroupName, &thisUserGroup.UserCount)
 		if err != nil {
 			return userGroups, err
 		}

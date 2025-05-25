@@ -496,8 +496,6 @@ func GetAllGroupsForUser(userId string, db *sql.DB) ([]GroupInfo, error) {
 		FROM groups g 
 		LEFT JOIN user_groups ug ON ug.group_id = g.group_id AND ug.user_id = $1
 		LEFT JOIN user_group_roles ur ON ur.group_id = g.group_id AND ur.user_id = $1
-
-)
 		GROUP BY g.group_id
 	`
 	//TODO: add deleted check
@@ -538,7 +536,7 @@ func GetAllDeletedGroupsForUser(userId string, lastRequestDatetime *string, db *
 	query := `
 		SELECT g.group_id
 		FROM groups g
-		JOIN user_groups ug ON ug.group_id = g.group_id
+		JOIN user_groups ug ON ug.group_id = g.group_id 
 		WHERE ug.user_id = $1
 		AND $2 = $2
 	`
