@@ -142,7 +142,7 @@ func GetGroupMembersFromDb(groupId string, db *sql.DB) ([]Member, error) {
 		INNER JOIN user_group_roles ur ON ur.group_id = ug.group_id AND ur.user_id = u.user_id
 		WHERE ug.group_id = $1
 		GROUP BY ug.group_id, u.user_id, u.username;
-`
+` //TODO: add deleted check
 	rows, err := db.Query(query, groupId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

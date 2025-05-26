@@ -711,3 +711,45 @@ func SyncAllGroups(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, response)
 
 }
+
+func SyncSpecificGroup(c *gin.Context, db *sql.DB) {
+	var request RequestIdGroup
+	if err := c.ShouldBindQuery(&request); err != nil {
+		responses.GenericBadRequestError(c.Writer)
+		return
+	}
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		responses.GenericUnauthorizedError(c.Writer)
+		return
+	}
+
+	inGroup, err := IsUserInGroup(request.GroupId, jwtPayload.UserId, db)
+	if err != nil {
+		log.Println(err)
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+	if !inGroup {
+		responses.GenericForbiddenError(c.Writer)
+		return
+	}
+
+	groupInformation, err := GetGroupInformationFromDb(request.GroupId, jwtPayload.UserId, db)
+	if err != nil {
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+	members, err := GetGroupMembersFromDb(request.GroupId, db)
+	if err != nil {
+		return
+	}
+
+	memberSyncResponse := MembersSyncResponse{
+		Members:    members,
+		DeletedIds: []string{"123", "456"}, // This should be replaced with actual logic to get deleted member IDs
+	}
+
+	c.JSON(http.StatusOK, SingularGroupSyncResponse{GroupInfo: groupInformation, Members: memberSyncResponse})
+}

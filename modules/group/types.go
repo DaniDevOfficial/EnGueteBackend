@@ -75,10 +75,11 @@ type MealCard struct {
 }
 
 type Member struct {
-	Username  string   `json:"username"`
-	GroupId   string   `json:"groupId"`
-	UserId    string   `json:"userId"`
-	UserRoles []string `json:"userRoles"`
+	Username       string   `json:"username"`
+	GroupId        string   `json:"groupId"`
+	UserId         string   `json:"userId"`
+	UserRoles      []string `json:"userRoles"`
+	ProfilePicture string   `json:"profilePicture"`
 }
 
 type FilterGroupRequest struct {
@@ -90,6 +91,16 @@ type FilterGroupRequest struct {
 	EndDateFilter   *string
 	AmICook         int    `form:"amICook"`
 	Preference      string `form:"preference"`
+}
+
+type MembersSyncResponse struct {
+	Members    []Member `json:"members"`
+	DeletedIds []string `json:"deletedIds"`
+}
+
+type SingularGroupSyncResponse struct {
+	GroupInfo GroupInfo           `json:"groupInfo"`
+	Members   MembersSyncResponse `json:"members"`
 }
 
 type AllGroupsSyncResponse struct {
