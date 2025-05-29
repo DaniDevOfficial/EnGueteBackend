@@ -1,5 +1,7 @@
 package meal
 
+import "enguete/modules/group"
+
 type MealError struct {
 	Error string `json:"error"`
 }
@@ -97,4 +99,14 @@ type Meal struct {
 
 type RequestMealId struct {
 	MealId string `form:"mealId" binding:"required,uuid"`
+}
+
+type RequestSyncGroupMeals struct {
+	GroupId   string `form:"groupId" binding:"required,uuid"`
+	StartDate string `form:"startDate" binding:"required,dateTime"`
+	EndDate   string `form:"endDate" binding:"required,dateTime"`
+}
+type ResponseSyncGroupMeals struct {
+	Meals      []group.MealCard `json:"meals"`
+	DeletedIds []string         `json:"deletedIds"`
 }

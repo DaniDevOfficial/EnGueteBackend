@@ -2,7 +2,6 @@ package group
 
 import (
 	"database/sql"
-	"enguete/util/roles"
 	"errors"
 	"github.com/lib/pq"
 )
@@ -188,7 +187,7 @@ func GetMealsInGroupDB(filters FilterGroupRequest, userId string, db *sql.DB) ([
         LEFT JOIN meal_cooks mc ON mc.meal_id = m.meal_id AND mc.user_id = $2
         WHERE m.group_id = $1
         AND ($3::timestamp IS NULL OR $4::timestamp IS NULL OR m.date_time BETWEEN $3 AND $4)
-
+		
         GROUP BY m.meal_id, user_pref.preference, mc.user_id
         ORDER BY m.date_time desc 
 `
@@ -450,7 +449,8 @@ var ErrNoMatchingGroupOrUser = errors.New("no matching group or user found for d
 
 func LeaveGroupInDB(groupId string, userId string, tx *sql.Tx) error {
 	query := `
-		DELETE FROM user_groups
+		UPDATE user_groups
+		SET deleted_at = NOW()
 		WHERE group_id = $1
 		AND user_id = $2
 	`
@@ -494,22 +494,25 @@ func GetAllGroupsForUser(userId string, db *sql.DB) ([]GroupInfo, error) {
 			COUNT(DISTINCT ug.user_id) AS user_count,
 			ARRAY_AGG(COALESCE(ur.role, '')) AS user_roles
 		FROM groups g 
-		LEFT JOIN user_groups ug ON ug.group_id = g.group_id AND ug.user_id = $1
+		INNER JOIN user_groups ug ON ug.group_id = g.group_id AND ug.user_id = $1
 		LEFT JOIN user_group_roles ur ON ur.group_id = g.group_id AND ur.user_id = $1
+		WHERE g.deleted_at IS NULL
+		AND ug.deleted_at IS NULL 
+		AND (
+		$2::timestamp IS NULL
+		OR GREATEST(
+			COALESCE(g.updated_at, 'epoch'),
+			COALESCE(ug.updated_at, 'epoch')
+		) > $2::timestamp
+		)
 		GROUP BY g.group_id
+		
 	`
 	//TODO: add deleted check
 	/**
-			WHERE g.deletedAt IS NULL
-	AND (
-	$2::timestamp IS NULL
-	OR GREATEST(
-		COALESCE(g.updated_at, 'epoch'),
-		COALESCE(ug.updated_at, 'epoch'),
-		COALESCE(ur.updated_at, 'epoch')
-	) > $2::timestamp
-	*/
-	rows, err := db.Query(query, userId)
+
+	 */
+	rows, err := db.Query(query, userId, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -525,7 +528,6 @@ func GetAllGroupsForUser(userId string, db *sql.DB) ([]GroupInfo, error) {
 			return nil, err
 		}
 		group.UserRoles = userRoles
-		group.UserRoleRights = roles.GetAllAllowedActionsForRoles(userRoles)
 		groups = append(groups, group)
 	}
 
@@ -536,14 +538,16 @@ func GetAllDeletedGroupsForUser(userId string, lastRequestDatetime *string, db *
 	query := `
 		SELECT g.group_id
 		FROM groups g
-		JOIN user_groups ug ON ug.group_id = g.group_id 
+		INNER JOIN user_groups ug ON ug.group_id = g.group_id 
 		WHERE ug.user_id = $1
-		AND $2 = $2
+		AND (
+		    g.deleted_at IS NOT NULL
+	 		AND ($2::timestamp IS NULL OR g.deleted_at >= $2::timestamp) 
+		) OR (
+		    ug.deleted_at IS NOT NULL
+		    AND ($2::timestamp IS NULL OR ug.deleted_at >= $2::timestamp)
+		)
 	`
-	/**
-	  AND g.deletedAt IS NOT NULL
-	  AND ($2::timestamp IS NULL OR g.deletedAt > $2::timestamp)
-	*/
 	rows, err := db.Query(query, userId, lastRequestDatetime)
 	if err != nil {
 		return nil, err

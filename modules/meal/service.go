@@ -545,3 +545,43 @@ func UpdateMealScheduledAt(c *gin.Context, db *sql.DB) {
 	//TODO: Send a push notification to all not opt out or undecided users
 	c.JSON(http.StatusOK, MealSuccess{Message: "Meal updated successfully"})
 }
+
+func SyncGroupMeals(c *gin.Context, db *sql.DB) {
+	var requestSyncGroupMeals RequestSyncGroupMeals
+	if err := c.ShouldBindQuery(&requestSyncGroupMeals); err != nil {
+		responses.GenericBadRequestError(c.Writer)
+		return
+	}
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		responses.GenericUnauthorizedError(c.Writer)
+		return
+	}
+
+	inGroup, err := group.IsUserInGroup(requestSyncGroupMeals.GroupId, jwtPayload.UserId, db)
+	if err != nil {
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+	if !inGroup {
+		responses.GenericNotFoundError(c.Writer)
+		return
+	}
+
+	meals, err := GetAllMealsInGroupInTimeframe(requestSyncGroupMeals.GroupId, jwtPayload.UserId, requestSyncGroupMeals.StartDate, requestSyncGroupMeals.EndDate, db)
+	if err != nil {
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+
+	deletedIds, err := GetDeletedMealsInTimeframe(requestSyncGroupMeals.GroupId, requestSyncGroupMeals.StartDate, requestSyncGroupMeals.EndDate, db)
+	if err != nil {
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+
+	c.JSON(http.StatusOK, ResponseSyncGroupMeals{
+		Meals:      meals,
+		DeletedIds: deletedIds,
+	})
+}

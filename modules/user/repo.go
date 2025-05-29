@@ -66,9 +66,9 @@ func GetUsersGroupByUserIdFromDB(userId string, db *sql.DB) ([]GroupCard, error)
 			COUNT(DISTINCT ug.user_id) AS user_count
 		FROM
 			groups g
-		LEFT JOIN 
+		INNER JOIN 
 			user_groups ug ON g.group_id = ug.group_id
-		LEFT JOIN 
+		INNER JOIN 
 			users u ON ug.user_id = u.user_id
 		WHERE 
 			u.user_id = $1

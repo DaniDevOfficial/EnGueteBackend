@@ -2,6 +2,7 @@ package meal
 
 import (
 	"database/sql"
+	"enguete/modules/group"
 	"errors"
 	"github.com/lib/pq"
 	"time"
@@ -302,4 +303,95 @@ func UpdateMealScheduledAtInDB(mealId string, newScheduledAt string, db *sql.DB)
 	}
 	//TODO: maybe implement a second query, which selects all the required data again from the db for real time data
 	return err
+}
+
+func GetAllMealsInGroupInTimeframe(groupId string, userId string, startDate string, endDate string, db *sql.DB) ([]group.MealCard, error) {
+	query := `
+        SELECT 
+            m.meal_id,
+            m.title,
+            m.closed,
+            m.fulfilled,
+            m.date_time,
+            m.meal_type,
+            m.notes,
+            COUNT(CASE WHEN mp.preference = 'opt-in' OR mp.preference = 'eat later' THEN 1 END) AS participant_count,
+            COALESCE(user_pref.preference, 'undecided') AS user_preference,
+            CASE WHEN mc.user_id IS NOT NULL THEN true ELSE false END AS is_cook
+        FROM meals m
+        LEFT JOIN meal_preferences mp ON mp.meal_id = m.meal_id AND mp.deleted_at IS NULL
+        LEFT JOIN meal_preferences user_pref ON user_pref.meal_id = m.meal_id AND user_pref.user_id = $2 AND user_pref.deleted_at IS NULL
+        LEFT JOIN meal_cooks mc ON mc.meal_id = m.meal_id AND mc.user_id = $2 AND mc.deleted_at IS NULL
+        WHERE m.group_id = $1
+    	AND m.deleted_at IS NULL
+        AND (m.date_time BETWEEN $3 AND $4)
+		
+        GROUP BY m.meal_id, user_pref.preference, mc.user_id
+        ORDER BY m.date_time desc 
+`
+	rows, err := db.Query(query, groupId, userId, startDate, endDate)
+	var mealCards []group.MealCard
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return mealCards, nil
+		}
+		return mealCards, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var mealCard group.MealCard
+		err := rows.Scan(
+			&mealCard.MealId,
+			&mealCard.Title,
+			&mealCard.Closed,
+			&mealCard.Fulfilled,
+			&mealCard.DateTime,
+			&mealCard.MealType,
+			&mealCard.Notes,
+			&mealCard.ParticipantCount,
+			&mealCard.UserPreference,
+			&mealCard.IsCook,
+		)
+		if err != nil {
+			return mealCards, err
+		}
+		mealCards = append(mealCards, mealCard)
+	}
+
+	return mealCards, nil
+
+}
+
+func GetDeletedMealsInTimeframe(groupId string, startDate string, endDate string, db *sql.DB) ([]string, error) {
+	query := `
+	SELECT 
+		m.meal_id
+	FROM meals m
+	WHERE m.group_id = $1
+	AND m.deleted_at IS NOT NULL
+	AND (m.date_time BETWEEN $2 AND $3)
+`
+
+	rows, err := db.Query(query, groupId, startDate, endDate)
+	var deletedIds []string
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return deletedIds, nil
+		}
+		return deletedIds, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var mealId string
+		if err := rows.Scan(&mealId); err != nil {
+			return nil, err
+		}
+		deletedIds = append(deletedIds, mealId)
+	}
+
+	return deletedIds, nil
 }
