@@ -78,6 +78,8 @@ type Member struct {
 	Username       string   `json:"username"`
 	GroupId        string   `json:"groupId"`
 	UserId         string   `json:"userId"`
+	JoinedAt       string   `json:"joinedAt"`
+	UserGroupId    string   `json:"userGroupId"`
 	UserRoles      []string `json:"userRoles"`
 	ProfilePicture string   `json:"profilePicture"`
 }

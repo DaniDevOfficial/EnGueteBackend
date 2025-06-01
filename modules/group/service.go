@@ -741,15 +741,64 @@ func SyncSpecificGroup(c *gin.Context, db *sql.DB) {
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
-	members, err := GetGroupMembersFromDb(request.GroupId, db)
+
+	memberSyncResponse, err := getSyncGroupMembersResponse(request.GroupId, db)
 	if err != nil {
+		log.Println(err)
+
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+	log.Println(memberSyncResponse)
+	c.JSON(http.StatusOK, SingularGroupSyncResponse{GroupInfo: groupInformation, Members: memberSyncResponse})
+}
+
+func getSyncGroupMembersResponse(groupId string, db *sql.DB) (MembersSyncResponse, error) {
+	members, err := GetGroupMembersFromDb(groupId, db)
+	if err != nil {
+		return MembersSyncResponse{}, err
+	}
+
+	deletedIds, err := GetDeletedGroupMembersFromDb(groupId, db)
+	if err != nil {
+		log.Println(err)
+		return MembersSyncResponse{}, err
+	}
+
+	return MembersSyncResponse{
+		Members:    members,
+		DeletedIds: deletedIds,
+	}, nil
+}
+
+func SyncGroupMembers(c *gin.Context, db *sql.DB) {
+	var request RequestIdGroup
+	if err := c.ShouldBindQuery(&request); err != nil {
+		responses.GenericBadRequestError(c.Writer)
 		return
 	}
 
-	memberSyncResponse := MembersSyncResponse{
-		Members:    members,
-		DeletedIds: []string{"123", "456"}, // This should be replaced with actual logic to get deleted member IDs
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		responses.GenericUnauthorizedError(c.Writer)
+		return
 	}
 
-	c.JSON(http.StatusOK, SingularGroupSyncResponse{GroupInfo: groupInformation, Members: memberSyncResponse})
+	inGroup, err := IsUserInGroup(request.GroupId, jwtPayload.UserId, db)
+	if err != nil {
+		log.Println(err)
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+	if !inGroup {
+		responses.GenericForbiddenError(c.Writer)
+		return
+	}
+	memberSyncResponse, err := getSyncGroupMembersResponse(request.GroupId, db)
+	if err != nil {
+		log.Println(err)
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+	c.JSON(http.StatusOK, memberSyncResponse)
 }

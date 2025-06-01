@@ -137,7 +137,7 @@ WHERE ug.group_id = $2
 	AND mc.user_id IS NULL
 GROUP BY u.user_id, u.username;
 
-`
+` //TODO: this needs cleaning up with the meal_cooks
 	rows, err := db.Query(query, mealId, groupId)
 	var mealParticipants []MealParticipant
 	if err != nil {

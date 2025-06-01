@@ -57,4 +57,7 @@ func registerSyncRoutes(router *gin.Engine, db *sql.DB) {
 	router.GET("/sync/group", func(c *gin.Context) {
 		SyncSpecificGroup(c, db)
 	})
+	router.GET("/sync/group/members", func(c *gin.Context) {
+		SyncGroupMembers(c, db)
+	})
 }
