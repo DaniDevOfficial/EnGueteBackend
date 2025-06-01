@@ -115,8 +115,8 @@ func GetMealById(c *gin.Context, db *sql.DB) {
 
 	participationInformation := MergeAndSortParticipants(participationInformationWithPreference, participationInformationWithoutPreference)
 	meal := Meal{
-		MealInformation:            mealInformation,
-		MealParticipantInformation: participationInformation,
+		MealInformation:           mealInformation,
+		MealPreferenceInformation: participationInformation,
 	}
 	c.JSON(http.StatusOK, meal)
 }

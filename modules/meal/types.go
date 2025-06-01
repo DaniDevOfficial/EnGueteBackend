@@ -84,7 +84,7 @@ type MealInformation struct {
 	IsCook           bool   `json:"isCook"`
 }
 
-type MealParticipant struct {
+type MealPreferences struct {
 	UserId     string `json:"userId"`
 	MealId     string `json:"mealId"`
 	Username   string `json:"username"`
@@ -93,8 +93,8 @@ type MealParticipant struct {
 }
 
 type Meal struct {
-	MealInformation            MealInformation   `json:"mealInformation"`
-	MealParticipantInformation []MealParticipant `json:"mealParticipants"`
+	MealInformation           MealInformation   `json:"mealInformation"`
+	MealPreferenceInformation []MealPreferences `json:"mealPreferences"`
 }
 
 type RequestMealId struct {

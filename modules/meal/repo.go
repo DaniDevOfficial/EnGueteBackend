@@ -72,7 +72,7 @@ func GetSingularMealInformation(mealId string, userId string, db *sql.DB) (MealI
 	return mealInformation, nil
 }
 
-func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealParticipant, error) {
+func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealPreferences, error) {
 	query := `
 		SELECT 
     		u.user_id,
@@ -89,7 +89,7 @@ func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealPar
 		WHERE mp.meal_id = $1 OR mc.meal_id = $1;
 `
 	rows, err := db.Query(query, mealId)
-	var mealParticipants []MealParticipant
+	var mealParticipants []MealPreferences
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return mealParticipants, nil
@@ -99,7 +99,7 @@ func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealPar
 	defer rows.Close()
 
 	for rows.Next() {
-		var mealParticipant MealParticipant
+		var mealParticipant MealPreferences
 		err := rows.Scan(
 			&mealParticipant.UserId,
 			&mealParticipant.MealId,
@@ -116,7 +116,7 @@ func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealPar
 	return mealParticipants, nil
 }
 
-func GetGroupMembersNotParticipatingInMeal(mealId string, groupId string, db *sql.DB) ([]MealParticipant, error) {
+func GetGroupMembersNotParticipatingInMeal(mealId string, groupId string, db *sql.DB) ([]MealPreferences, error) {
 	query := `
 SELECT 
     u.user_id,
@@ -139,7 +139,7 @@ GROUP BY u.user_id, u.username;
 
 ` //TODO: this needs cleaning up with the meal_cooks
 	rows, err := db.Query(query, mealId, groupId)
-	var mealParticipants []MealParticipant
+	var mealParticipants []MealPreferences
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return mealParticipants, nil
@@ -149,7 +149,7 @@ GROUP BY u.user_id, u.username;
 	defer rows.Close()
 
 	for rows.Next() {
-		var mealParticipant MealParticipant
+		var mealParticipant MealPreferences
 		err := rows.Scan(
 			&mealParticipant.UserId,
 			&mealParticipant.MealId,
