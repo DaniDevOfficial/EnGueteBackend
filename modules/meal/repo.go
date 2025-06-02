@@ -35,6 +35,7 @@ func GetSingularMealInformation(mealId string, userId string, db *sql.DB) (MealI
 	query := `
         SELECT 
             m.meal_id,
+            m.group_id,
             m.title,
             m.closed,
             m.fulfilled,
@@ -52,7 +53,8 @@ func GetSingularMealInformation(mealId string, userId string, db *sql.DB) (MealI
 `
 	var mealInformation MealInformation
 	err := db.QueryRow(query, mealId).Scan(
-		&mealInformation.MealID,
+		&mealInformation.MealId,
+		&mealInformation.GroupId,
 		&mealInformation.Title,
 		&mealInformation.Closed,
 		&mealInformation.Fulfilled,
@@ -77,6 +79,8 @@ func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealPre
 		SELECT 
     		u.user_id,
     		$1 AS meal_id,
+    		ug.user_group_id,
+    		mp.preference_id,
     		u.username,
     		COALESCE(mp.preference, 'undecided') AS preference,
     		CASE
@@ -86,7 +90,10 @@ func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealPre
 		FROM users u
 		LEFT JOIN meal_preferences mp ON u.user_id = mp.user_id AND mp.meal_id = $1
 		LEFT JOIN meal_cooks mc ON u.user_id = mc.user_id AND mc.meal_id = $1
-		WHERE mp.meal_id = $1 OR mc.meal_id = $1;
+		LEFT JOIN meals m ON m.meal_id = $1
+		INNER JOIN user_groups ug ON u.user_id = ug.user_id AND ug.group_id = m.group_id
+		WHERE mp.meal_id = $1 OR mc.meal_id = $1
+		AND (mp.deleted_at IS NULL OR mc.deleted_at IS NULL);
 `
 	rows, err := db.Query(query, mealId)
 	var mealParticipants []MealPreferences
@@ -103,6 +110,8 @@ func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealPre
 		err := rows.Scan(
 			&mealParticipant.UserId,
 			&mealParticipant.MealId,
+			&mealParticipant.UserGroupId,
+			&mealParticipant.PreferenceId,
 			&mealParticipant.Username,
 			&mealParticipant.Preference,
 			&mealParticipant.IsCook,
@@ -189,12 +198,12 @@ func UpdateMealFulfilledStatus(mealId string, isFulfilled bool, db *sql.DB) erro
 
 func ChangeOptInStatusMealInDB(userId string, mealId string, preference string, db *sql.DB) error {
 	query := `
-        INSERT INTO meal_preferences (meal_id, user_id, preference, last_updated)
+        INSERT INTO meal_preferences (meal_id, user_id, preference, updated_at)
         VALUES ($1, $2, $3, $4)
         ON CONFLICT (meal_id, user_id)
         DO UPDATE 
         SET preference = EXCLUDED.preference,
-            last_updated = EXCLUDED.last_updated;`
+            updated_at = EXCLUDED.updated_at;`
 
 	_, err := db.Exec(query, mealId, userId, preference, time.Now())
 

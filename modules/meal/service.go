@@ -311,6 +311,7 @@ func UpdatePreference(c *gin.Context, db *sql.DB) {
 				responses.GenericGroupDoesNotExistError(c.Writer)
 				return
 			}
+			responses.GenericInternalServerError(c.Writer)
 			return
 		}
 		if !canPerformAction {
@@ -584,4 +585,52 @@ func SyncGroupMeals(c *gin.Context, db *sql.DB) {
 		Meals:      meals,
 		DeletedIds: deletedIds,
 	})
+}
+
+func SyncMealInformation(c *gin.Context, db *sql.DB) {
+	var mealInfo RequestMealId
+	if err := c.ShouldBindQuery(&mealInfo); err != nil {
+		responses.GenericBadRequestError(c.Writer)
+		return
+	}
+
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		responses.GenericUnauthorizedError(c.Writer)
+		return
+	}
+
+	_, err = group.IsUserInGroupViaMealId(mealInfo.MealId, jwtPayload.UserId, db)
+	if err != nil {
+		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
+			responses.GenericGroupDoesNotExistError(c.Writer)
+			return
+		}
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+
+	mealInformation, err := GetSingularMealInformation(mealInfo.MealId, jwtPayload.UserId, db)
+	if err != nil {
+		if errors.Is(err, ErrNoData) {
+			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.MealDoesNotExistError, "Meal does not exist")
+			return
+		}
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+
+	participationInformation, err := GetMealParticipationInformationFromDB(mealInfo.MealId, db)
+	if err != nil {
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+	meal := ResponseSyncSingularMeal{
+		MealInformation: mealInformation,
+		MealPreferenceInformation: ResponsePreferenceSync{
+			Preferences: participationInformation,
+			DeletedIds:  nil,
+		},
+	}
+	c.JSON(http.StatusOK, meal)
 }

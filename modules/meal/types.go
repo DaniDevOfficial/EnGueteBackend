@@ -73,7 +73,8 @@ type ResponseNewMeal struct {
 }
 
 type MealInformation struct {
-	MealID           string `json:"mealId"`
+	MealId           string `json:"mealId"`
+	GroupId          string `json:"groupId"`
 	Title            string `json:"title"`
 	Closed           bool   `json:"closed"`
 	Fulfilled        bool   `json:"fulfilled"`
@@ -85,11 +86,13 @@ type MealInformation struct {
 }
 
 type MealPreferences struct {
-	UserId     string `json:"userId"`
-	MealId     string `json:"mealId"`
-	Username   string `json:"username"`
-	Preference string `json:"preference"`
-	IsCook     bool   `json:"isCook"`
+	UserId       string `json:"userId"`
+	PreferenceId string `json:"preferenceId"`
+	UserGroupId  string `json:"userGroupId"`
+	MealId       string `json:"mealId"`
+	Username     string `json:"username"`
+	Preference   string `json:"preference"`
+	IsCook       bool   `json:"isCook"`
 }
 
 type Meal struct {
@@ -109,4 +112,13 @@ type RequestSyncGroupMeals struct {
 type ResponseSyncGroupMeals struct {
 	Meals      []group.MealCard `json:"meals"`
 	DeletedIds []string         `json:"deletedIds"`
+}
+type ResponsePreferenceSync struct {
+	Preferences []MealPreferences `json:"preferences"`
+	DeletedIds  []string          `json:"deletedIds"`
+}
+
+type ResponseSyncSingularMeal struct {
+	MealInformation           MealInformation        `json:"mealInformation"`
+	MealPreferenceInformation ResponsePreferenceSync `json:"mealPreferences"`
 }
