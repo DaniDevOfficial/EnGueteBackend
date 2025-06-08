@@ -207,6 +207,7 @@ func GetMealsInGroupDB(filters FilterGroupRequest, userId string, db *sql.DB) ([
 	query := `
         SELECT 
             m.meal_id,
+            m.group_id,
             m.title,
             m.closed,
             m.fulfilled,
@@ -241,6 +242,7 @@ func GetMealsInGroupDB(filters FilterGroupRequest, userId string, db *sql.DB) ([
 		var mealCard MealCard
 		err := rows.Scan(
 			&mealCard.MealId,
+			&mealCard.GroupId,
 			&mealCard.Title,
 			&mealCard.Closed,
 			&mealCard.Fulfilled,

@@ -625,11 +625,19 @@ func SyncMealInformation(c *gin.Context, db *sql.DB) {
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
+	log.Println(5)
+	deletedIds, err := GetAllDeletedMealParticipationIds(mealInfo.MealId, nil, db)
+	if err != nil {
+		log.Println(err)
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+	log.Println(6)
 	meal := ResponseSyncSingularMeal{
 		MealInformation: mealInformation,
 		MealPreferenceInformation: ResponsePreferenceSync{
 			Preferences: participationInformation,
-			DeletedIds:  nil,
+			DeletedIds:  deletedIds,
 		},
 	}
 	c.JSON(http.StatusOK, meal)

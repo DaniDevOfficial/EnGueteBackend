@@ -82,6 +82,7 @@ type MealInformation struct {
 	MealType         string `json:"mealType"`
 	Notes            string `json:"notes"`
 	ParticipantCount int    `json:"participantCount"`
+	UserPreference   string `json:"userPreference"`
 	IsCook           bool   `json:"isCook"`
 }
 

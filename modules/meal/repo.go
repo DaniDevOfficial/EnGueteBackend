@@ -43,16 +43,18 @@ func GetSingularMealInformation(mealId string, userId string, db *sql.DB) (MealI
             m.meal_type,
             m.notes,
             COUNT(CASE WHEN mp.preference = 'opt-in' OR mp.preference = 'eat later' THEN 1 END) AS participant_count,
-            CASE WHEN mc.user_id IS NOT NULL THEN true ELSE false END AS is_cook
+            CASE WHEN mc.user_id IS NOT NULL THEN true ELSE false END AS is_cook,
+            COALESCE(user_pref.preference, 'undecided') AS user_preference
         FROM meals m
-        LEFT JOIN meal_preferences mp ON mp.meal_id = m.meal_id
-        LEFT JOIN meal_cooks mc ON mc.meal_id = m.meal_id
+        LEFT JOIN meal_preferences mp ON mp.meal_id = m.meal_id AND mp.deleted_at IS NULL
+        LEFT JOIN meal_preferences user_pref ON user_pref.meal_id = m.meal_id AND user_pref.user_id = $2 AND user_pref.deleted_at IS NULL
+        LEFT JOIN meal_cooks mc ON mc.meal_id = m.meal_id AND mp.deleted_at IS NULL AND mc.user_id = $2
         WHERE m.meal_id = $1
-        GROUP BY m.meal_id, mc.user_id
+        GROUP BY m.meal_id, mc.user_id, user_pref.preference
         ORDER BY m.date_time
 `
 	var mealInformation MealInformation
-	err := db.QueryRow(query, mealId).Scan(
+	err := db.QueryRow(query, mealId, userId).Scan(
 		&mealInformation.MealId,
 		&mealInformation.GroupId,
 		&mealInformation.Title,
@@ -63,6 +65,7 @@ func GetSingularMealInformation(mealId string, userId string, db *sql.DB) (MealI
 		&mealInformation.Notes,
 		&mealInformation.ParticipantCount,
 		&mealInformation.IsCook,
+		&mealInformation.UserPreference,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -174,6 +177,42 @@ GROUP BY u.user_id, u.username;
 	}
 	return mealParticipants, nil
 
+}
+
+func GetAllDeletedMealParticipationIds(mealId string, lastRequested *string, db *sql.DB) ([]string, error) {
+	query := `
+		SELECT
+			mp.preference_id
+		FROM meal_preferences mp
+		LEFT JOIN meal_cooks mc ON mc.meal_id = $1
+		WHERE mp.meal_id = $1
+		AND (
+		    mp.deleted_at IS NOT NULL
+	 		AND ($2::timestamp IS NULL OR mp.deleted_at >= $2::timestamp) 
+		) 
+		AND  (
+		    mc.deleted_at IS NOT NULL
+		    AND ($2::timestamp IS NULL OR mc.deleted_at >= $2::timestamp)
+		)
+`
+
+	rows, err := db.Query(query, mealId, lastRequested)
+	var deletedIds []string
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return deletedIds, nil
+		}
+		return deletedIds, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var preferenceId string
+		if err := rows.Scan(&preferenceId); err != nil {
+			return nil, err
+		}
+		deletedIds = append(deletedIds, preferenceId)
+	}
+	return deletedIds, nil
 }
 
 var ErrUserAlreadyHasAPreferenceInSpecificMeal = errors.New("user already has A Preference")
@@ -318,6 +357,7 @@ func GetAllMealsInGroupInTimeframe(groupId string, userId string, startDate stri
 	query := `
         SELECT 
             m.meal_id,
+            m.group_id,
             m.title,
             m.closed,
             m.fulfilled,
@@ -353,6 +393,7 @@ func GetAllMealsInGroupInTimeframe(groupId string, userId string, startDate stri
 		var mealCard group.MealCard
 		err := rows.Scan(
 			&mealCard.MealId,
+			&mealCard.GroupId,
 			&mealCard.Title,
 			&mealCard.Closed,
 			&mealCard.Fulfilled,
