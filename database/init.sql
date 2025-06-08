@@ -2,7 +2,7 @@ CREATE
     EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Users Table
-CREATE TABLE users
+CREATE TABLE IF NOT EXISTS users
 (
     user_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username      VARCHAR(100)        NOT NULL,
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens
 
 
 -- Groups Table
-CREATE TABLE groups
+CREATE TABLE IF NOT EXISTS groups
 (
     group_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     group_name VARCHAR(100) NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE groups
 );
 
 -- Group Invites Table
-CREATE TABLE group_invites
+CREATE TABLE IF NOT EXISTS group_invites
 (
     invite_token UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     group_id     UUID NOT NULL REFERENCES groups (group_id) ON DELETE CASCADE,
@@ -49,7 +49,7 @@ CREATE TABLE group_invites
 );
 
 -- User_Groups Table (Many-to-Many Relationship between Users and Groups)
-CREATE TABLE user_groups
+CREATE TABLE IF NOT EXISTS user_groups
 (
     user_group_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id       UUID NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
@@ -64,7 +64,7 @@ CREATE TABLE user_groups
 
 );
 
-CREATE TABLE user_groups_blacklist
+CREATE TABLE IF NOT EXISTS user_groups_blacklist
 (
     user_group_blacklist_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id                 UUID NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
@@ -78,7 +78,7 @@ CREATE TABLE user_groups_blacklist
 
 );
 
-CREATE TABLE user_group_roles
+CREATE TABLE IF NOT EXISTS user_group_roles
 (
     user_group_roles_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_groups_id      UUID        NOT NULL REFERENCES user_groups (user_group_id) ON DELETE CASCADE,
@@ -91,7 +91,7 @@ CREATE TABLE user_group_roles
 
 
 -- Meals Table
-CREATE TABLE meals
+CREATE TABLE IF NOT EXISTS meals
 (
     meal_id    UUID PRIMARY KEY      DEFAULT gen_random_uuid(),
     group_id   UUID REFERENCES groups (group_id) ON DELETE CASCADE,
@@ -108,12 +108,13 @@ CREATE TABLE meals
 );
 
 -- Meal_Preferences Table (User Preferences for Each Meal)
-CREATE TABLE meal_preferences
+CREATE TABLE IF NOT EXISTS meal_preferences
 (
     preference_id UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     meal_id       UUID        NOT NULL REFERENCES meals (meal_id) ON DELETE CASCADE,
     user_id       UUID        NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
     preference    VARCHAR(20) NOT NULL,
+    isCook        BOOLEAN     NOT NULL DEFAULT FALSE,
     created_at    TIMESTAMPTZ      DEFAULT CURRENT_TIMESTAMP,
     updated_at    TIMESTAMPTZ      DEFAULT CURRENT_TIMESTAMP,
     deleted_at    TIMESTAMPTZ      DEFAULT NULL,
@@ -122,17 +123,6 @@ CREATE TABLE meal_preferences
 );
 
 -- Meal_Cooks Table (Many-to-Many Relationship between Meals and Users)
-CREATE TABLE meal_cooks
-(
-    meal_cook_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    meal_id      UUID NOT NULL REFERENCES meals (meal_id) ON DELETE CASCADE,
-    user_id      UUID NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
-    created_at    TIMESTAMPTZ      DEFAULT CURRENT_TIMESTAMP,
-    updated_at    TIMESTAMPTZ      DEFAULT CURRENT_TIMESTAMP,
-    deleted_at    TIMESTAMPTZ      DEFAULT NULL,
-
-    CONSTRAINT unique_meal_cook UNIQUE (meal_id, user_id)
-);
 
 CREATE OR REPLACE FUNCTION set_updated_at()
     RETURNS TRIGGER AS
@@ -167,7 +157,7 @@ $$
 $$;
 
 -- Grant access to all existing tables
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO name;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO wishtournament;
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT ALL PRIVILEGES ON TABLES TO name;
+    GRANT ALL PRIVILEGES ON TABLES TO wishtournament;

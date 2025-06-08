@@ -48,12 +48,6 @@ Table meal_preferences {
   created_at TIMESTAMPTZ [default: "CURRENT_TIMESTAMP"]
 }
 
-Table meal_cooks {
-  meal_cook_id UUID [pk, default: "gen_random_uuid()"]
-  meal_id UUID
-  user_id UUID
-}
-
 // Relationships
 Ref: groups.created_by > users.user_id
 Ref: group_invites.group_id > groups.group_id
@@ -63,5 +57,3 @@ Ref: meals.group_id > groups.group_id
 Ref: meals.created_by > users.user_id
 Ref: meal_preferences.meal_id > meals.meal_id
 Ref: meal_preferences.user_id > users.user_id
-Ref: meal_cooks.meal_id > meals.meal_id
-Ref: meal_cooks.user_id > users.user_id

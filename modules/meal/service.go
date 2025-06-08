@@ -593,15 +593,17 @@ func SyncMealInformation(c *gin.Context, db *sql.DB) {
 		responses.GenericBadRequestError(c.Writer)
 		return
 	}
-
+	log.Println(1)
 	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
 	if err != nil {
 		responses.GenericUnauthorizedError(c.Writer)
 		return
 	}
-
+	log.Println(2)
 	_, err = group.IsUserInGroupViaMealId(mealInfo.MealId, jwtPayload.UserId, db)
 	if err != nil {
+		log.Println(err)
+
 		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
 			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
@@ -609,9 +611,10 @@ func SyncMealInformation(c *gin.Context, db *sql.DB) {
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
-
+	log.Println(3)
 	mealInformation, err := GetSingularMealInformation(mealInfo.MealId, jwtPayload.UserId, db)
 	if err != nil {
+		log.Println(err)
 		if errors.Is(err, ErrNoData) {
 			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.MealDoesNotExistError, "Meal does not exist")
 			return
@@ -619,9 +622,10 @@ func SyncMealInformation(c *gin.Context, db *sql.DB) {
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
-
+	log.Println(4)
 	participationInformation, err := GetMealParticipationInformationFromDB(mealInfo.MealId, db)
 	if err != nil {
+		log.Println(err)
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}

@@ -64,16 +64,6 @@
    );
    ```
 
-#### 6. **Meal_Cooks Table**
-- Allows multiple users to be assigned as cooks for each meal, supporting a many-to-many relationship between meals and users.
-   ```sql
-   CREATE TABLE meal_cooks (
-       meal_cook_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-       meal_id UUID REFERENCES meals(meal_id) ON DELETE CASCADE,
-       user_id UUID REFERENCES users(user_id) ON DELETE CASCADE
-   );
-   ```
-
 ---
 
 ### Schema Relationships Summary

@@ -42,13 +42,12 @@ func GetSingularMealInformation(mealId string, userId string, db *sql.DB) (MealI
             m.date_time,
             m.meal_type,
             m.notes,
-            COUNT(CASE WHEN mp.preference = 'opt-in' OR mp.preference = 'eat later' THEN 1 END) AS participant_count,
-            CASE WHEN mc.user_id IS NOT NULL THEN true ELSE false END AS is_cook,
+            COUNT(CASE WHEN mp.preference = 'opt-in' OR mp.preference = 'eat later' THEN 1 END) AS participant_count, --todo make it so its just for undecided preferences
+            COALESCE(user_pref.isCook, FALSE) AS is_cook,
             COALESCE(user_pref.preference, 'undecided') AS user_preference
         FROM meals m
         LEFT JOIN meal_preferences mp ON mp.meal_id = m.meal_id AND mp.deleted_at IS NULL
         LEFT JOIN meal_preferences user_pref ON user_pref.meal_id = m.meal_id AND user_pref.user_id = $2 AND user_pref.deleted_at IS NULL
-        LEFT JOIN meal_cooks mc ON mc.meal_id = m.meal_id AND mp.deleted_at IS NULL AND mc.user_id = $2
         WHERE m.meal_id = $1
         GROUP BY m.meal_id, mc.user_id, user_pref.preference
         ORDER BY m.date_time
@@ -86,17 +85,14 @@ func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealPre
     		mp.preference_id,
     		u.username,
     		COALESCE(mp.preference, 'undecided') AS preference,
-    		CASE
-        		WHEN mc.user_id IS NOT NULL THEN TRUE
-        		ELSE FALSE
-    		END AS is_cook
+    		COALESCE(mp.isCook, FALSE) AS is_cook
+
 		FROM users u
 		LEFT JOIN meal_preferences mp ON u.user_id = mp.user_id AND mp.meal_id = $1
-		LEFT JOIN meal_cooks mc ON u.user_id = mc.user_id AND mc.meal_id = $1
 		LEFT JOIN meals m ON m.meal_id = $1
 		INNER JOIN user_groups ug ON u.user_id = ug.user_id AND ug.group_id = m.group_id
-		WHERE mp.meal_id = $1 OR mc.meal_id = $1
-		AND (mp.deleted_at IS NULL OR mc.deleted_at IS NULL);
+		WHERE mp.meal_id = $1 
+		AND (mp.deleted_at IS NULL);
 `
 	rows, err := db.Query(query, mealId)
 	var mealParticipants []MealPreferences
@@ -130,26 +126,25 @@ func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealPre
 
 func GetGroupMembersNotParticipatingInMeal(mealId string, groupId string, db *sql.DB) ([]MealPreferences, error) {
 	query := `
-SELECT 
-    u.user_id,
-    $1 AS meal_id,
-    u.username,
-    'undecided' AS preference,
-    false AS is_cook
-FROM user_groups ug
-INNER JOIN users u ON u.user_id = ug.user_id
-LEFT JOIN meal_preferences mp 
-    ON mp.user_id = u.user_id 
-    AND mp.meal_id = $1
-LEFT JOIN meal_cooks mc 
-    ON mc.user_id = u.user_id 
-    AND mc.meal_id = $1
-WHERE ug.group_id = $2
-  AND mp.user_id IS NULL
-	AND mc.user_id IS NULL
-GROUP BY u.user_id, u.username;
+	SELECT 
+	    u.user_id,
+	    $1 AS meal_id,
+	    u.username,
+	    'undecided' AS preference,
+	    false AS is_cook
+	FROM user_groups ug
+	INNER JOIN users u ON u.user_id = ug.user_id
+	LEFT JOIN meal_preferences mp ON mp.user_id = u.user_id AND mp.meal_id = $1
+	
+	WHERE ug.group_id = $2 
+	AND (
+	    mp.user_id IS NULL
+	    OR mp.deleted_at IS NOT NULL
+	)
+	
+	GROUP BY u.user_id, u.username;
 
-` //TODO: this needs cleaning up with the meal_cooks
+`
 	rows, err := db.Query(query, mealId, groupId)
 	var mealParticipants []MealPreferences
 	if err != nil {
@@ -184,15 +179,10 @@ func GetAllDeletedMealParticipationIds(mealId string, lastRequested *string, db 
 		SELECT
 			mp.preference_id
 		FROM meal_preferences mp
-		LEFT JOIN meal_cooks mc ON mc.meal_id = $1
 		WHERE mp.meal_id = $1
 		AND (
 		    mp.deleted_at IS NOT NULL
 	 		AND ($2::timestamp IS NULL OR mp.deleted_at >= $2::timestamp) 
-		) 
-		AND  (
-		    mc.deleted_at IS NOT NULL
-		    AND ($2::timestamp IS NULL OR mc.deleted_at >= $2::timestamp)
 		)
 `
 
@@ -264,9 +254,9 @@ var ErrUserWasntACook = errors.New("user wasn't a Cook")
 
 func RemoveCookFromMealInDB(userId string, meal_id string, db *sql.DB) error {
 	query := `
-        DELETE FROM meal_cooks 
-        WHERE user_id = $1 AND meal_id = $2 
-        RETURNING user_id
+        UPDATE meal_preferences
+        SET deleted_at = NOW()
+        WHERE user_id = $1 AND meal_id = $2
     `
 	var deletedUserId string
 	err := db.QueryRow(query, userId, meal_id).Scan(&deletedUserId)
@@ -277,11 +267,13 @@ func RemoveCookFromMealInDB(userId string, meal_id string, db *sql.DB) error {
 }
 
 func AddCookToMealInDB(userId string, mealId string, db *sql.DB) error {
-	query := `INSERT INTO meal_cooks
-    				(user_id, meal_id)
-    				VALUES
-    				($1, $2)`
-	_, err := db.Exec(query, userId, mealId)
+	query := `
+			INSERT INTO meal_preferences (meal_id, user_id, preference, is_cook)
+			VALUES ($1, $2, 'undecided', true)
+			ON CONFLICT (meal_id, user_id) DO UPDATE
+			SET is_cook = true;
+    				`
+	_, err := db.Exec(query, mealId, userId)
 	return err
 }
 
@@ -366,16 +358,14 @@ func GetAllMealsInGroupInTimeframe(groupId string, userId string, startDate stri
             m.notes,
             COUNT(CASE WHEN mp.preference = 'opt-in' OR mp.preference = 'eat later' THEN 1 END) AS participant_count,
             COALESCE(user_pref.preference, 'undecided') AS user_preference,
-            CASE WHEN mc.user_id IS NOT NULL THEN true ELSE false END AS is_cook
+            COALESCE(user_pref.isCook, FALSE) AS is_cook
         FROM meals m
         LEFT JOIN meal_preferences mp ON mp.meal_id = m.meal_id AND mp.deleted_at IS NULL
         LEFT JOIN meal_preferences user_pref ON user_pref.meal_id = m.meal_id AND user_pref.user_id = $2 AND user_pref.deleted_at IS NULL
-        LEFT JOIN meal_cooks mc ON mc.meal_id = m.meal_id AND mc.user_id = $2 AND mc.deleted_at IS NULL
         WHERE m.group_id = $1
     	AND m.deleted_at IS NULL
         AND (m.date_time BETWEEN $3 AND $4)
 		
-        GROUP BY m.meal_id, user_pref.preference, mc.user_id
         ORDER BY m.date_time desc 
 `
 	rows, err := db.Query(query, groupId, userId, startDate, endDate)
