@@ -329,13 +329,10 @@ func UpdatePreference(c *gin.Context, db *sql.DB) {
 	}
 
 	if updatePreference.IsCook != nil {
-		if *updatePreference.IsCook {
-			err = AddCookToMealInDB(updatePreference.UserId, updatePreference.MealId, db)
-		} else {
-			err = RemoveCookFromMealInDB(updatePreference.UserId, updatePreference.MealId, db)
-		}
+		err = ChangeIsCookForUserOnMeal(updatePreference.UserId, updatePreference.MealId, *updatePreference.IsCook, db)
 
-		if err != nil && !errors.Is(err, ErrUserWasntACook) {
+		if err != nil {
+			log.Println(err)
 			responses.GenericInternalServerError(c.Writer)
 			return
 		}
@@ -571,6 +568,7 @@ func SyncGroupMeals(c *gin.Context, db *sql.DB) {
 
 	meals, err := GetAllMealsInGroupInTimeframe(requestSyncGroupMeals.GroupId, jwtPayload.UserId, requestSyncGroupMeals.StartDate, requestSyncGroupMeals.EndDate, db)
 	if err != nil {
+		log.Println(err)
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}

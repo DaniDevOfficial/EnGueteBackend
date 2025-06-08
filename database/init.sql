@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS meal_preferences
     meal_id       UUID        NOT NULL REFERENCES meals (meal_id) ON DELETE CASCADE,
     user_id       UUID        NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
     preference    VARCHAR(20) NOT NULL,
-    isCook        BOOLEAN     NOT NULL DEFAULT FALSE,
+    is_cook        BOOLEAN     NOT NULL DEFAULT FALSE,
     created_at    TIMESTAMPTZ      DEFAULT CURRENT_TIMESTAMP,
     updated_at    TIMESTAMPTZ      DEFAULT CURRENT_TIMESTAMP,
     deleted_at    TIMESTAMPTZ      DEFAULT NULL,

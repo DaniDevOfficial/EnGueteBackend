@@ -216,14 +216,14 @@ func GetMealsInGroupDB(filters FilterGroupRequest, userId string, db *sql.DB) ([
             m.notes,
             COUNT(CASE WHEN mp.preference = 'opt-in' OR mp.preference = 'eat later' THEN 1 END) AS participant_count,
             COALESCE(user_pref.preference, 'undecided') AS user_preference,
-            COALESCE(user_pref.isCook, FALSE) AS is_cook
+            COALESCE(user_pref.is_cook, FALSE) AS is_cook
         FROM meals m
         LEFT JOIN meal_preferences mp ON mp.meal_id = m.meal_id
         LEFT JOIN meal_preferences user_pref ON user_pref.meal_id = m.meal_id AND user_pref.user_id = $2
         WHERE m.group_id = $1
         AND ($3::timestamp IS NULL OR $4::timestamp IS NULL OR m.date_time BETWEEN $3 AND $4)
 		
-        GROUP BY m.meal_id, user_pref.preference, mc.user_id
+        GROUP BY m.meal_id, user_pref.preference
         ORDER BY m.date_time desc 
 `
 	rows, err := db.Query(query, filters.GroupId, userId, filters.StartDateFilter, filters.EndDateFilter)
