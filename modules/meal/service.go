@@ -115,8 +115,8 @@ func GetMealById(c *gin.Context, db *sql.DB) {
 
 	participationInformation := MergeAndSortParticipants(participationInformationWithPreference, participationInformationWithoutPreference)
 	meal := Meal{
-		MealInformation:            mealInformation,
-		MealParticipantInformation: participationInformation,
+		MealInformation:           mealInformation,
+		MealPreferenceInformation: participationInformation,
 	}
 	c.JSON(http.StatusOK, meal)
 }
@@ -311,6 +311,7 @@ func UpdatePreference(c *gin.Context, db *sql.DB) {
 				responses.GenericGroupDoesNotExistError(c.Writer)
 				return
 			}
+			responses.GenericInternalServerError(c.Writer)
 			return
 		}
 		if !canPerformAction {
@@ -328,13 +329,10 @@ func UpdatePreference(c *gin.Context, db *sql.DB) {
 	}
 
 	if updatePreference.IsCook != nil {
-		if *updatePreference.IsCook {
-			err = AddCookToMealInDB(updatePreference.UserId, updatePreference.MealId, db)
-		} else {
-			err = RemoveCookFromMealInDB(updatePreference.UserId, updatePreference.MealId, db)
-		}
+		err = ChangeIsCookForUserOnMeal(updatePreference.UserId, updatePreference.MealId, *updatePreference.IsCook, db)
 
-		if err != nil && !errors.Is(err, ErrUserWasntACook) {
+		if err != nil {
+			log.Println(err)
 			responses.GenericInternalServerError(c.Writer)
 			return
 		}
@@ -544,4 +542,105 @@ func UpdateMealScheduledAt(c *gin.Context, db *sql.DB) {
 	//TODO: Send an updated meal information to the frontend
 	//TODO: Send a push notification to all not opt out or undecided users
 	c.JSON(http.StatusOK, MealSuccess{Message: "Meal updated successfully"})
+}
+
+func SyncGroupMeals(c *gin.Context, db *sql.DB) {
+	var requestSyncGroupMeals RequestSyncGroupMeals
+	if err := c.ShouldBindQuery(&requestSyncGroupMeals); err != nil {
+		responses.GenericBadRequestError(c.Writer)
+		return
+	}
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		responses.GenericUnauthorizedError(c.Writer)
+		return
+	}
+
+	inGroup, err := group.IsUserInGroup(requestSyncGroupMeals.GroupId, jwtPayload.UserId, db)
+	if err != nil {
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+	if !inGroup {
+		responses.GenericNotFoundError(c.Writer)
+		return
+	}
+
+	meals, err := GetAllMealsInGroupInTimeframe(requestSyncGroupMeals.GroupId, jwtPayload.UserId, requestSyncGroupMeals.StartDate, requestSyncGroupMeals.EndDate, db)
+	if err != nil {
+		log.Println(err)
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+
+	deletedIds, err := GetDeletedMealsInTimeframe(requestSyncGroupMeals.GroupId, requestSyncGroupMeals.StartDate, requestSyncGroupMeals.EndDate, db)
+	if err != nil {
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+
+	c.JSON(http.StatusOK, ResponseSyncGroupMeals{
+		Meals:      meals,
+		DeletedIds: deletedIds,
+	})
+}
+
+func SyncMealInformation(c *gin.Context, db *sql.DB) {
+	var mealInfo RequestMealId
+	if err := c.ShouldBindQuery(&mealInfo); err != nil {
+		responses.GenericBadRequestError(c.Writer)
+		return
+	}
+	log.Println(1)
+	jwtPayload, err := auth.GetJWTPayloadFromHeader(c, db)
+	if err != nil {
+		responses.GenericUnauthorizedError(c.Writer)
+		return
+	}
+	log.Println(2)
+	_, err = group.IsUserInGroupViaMealId(mealInfo.MealId, jwtPayload.UserId, db)
+	if err != nil {
+		log.Println(err)
+
+		if errors.Is(err, group.ErrUserIsNotPartOfThisGroup) {
+			responses.GenericGroupDoesNotExistError(c.Writer)
+			return
+		}
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+	log.Println(3)
+	mealInformation, err := GetSingularMealInformation(mealInfo.MealId, jwtPayload.UserId, db)
+	if err != nil {
+		log.Println(err)
+		if errors.Is(err, ErrNoData) {
+			responses.HttpErrorResponse(c.Writer, http.StatusNotFound, frontendErrors.MealDoesNotExistError, "Meal does not exist")
+			return
+		}
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+	log.Println(4)
+	participationInformation, err := GetMealParticipationInformationFromDB(mealInfo.MealId, db)
+	if err != nil {
+		log.Println(err)
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+	log.Println(5)
+	deletedIds, err := GetAllDeletedMealParticipationIds(mealInfo.MealId, nil, db)
+	if err != nil {
+		log.Println(err)
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+	log.Println(6)
+	meal := ResponseSyncSingularMeal{
+		MealInformation: mealInformation,
+		MealPreferenceInformation: ResponsePreferenceSync{
+			Preferences: participationInformation,
+			DeletedIds:  deletedIds,
+		},
+	}
+	c.JSON(http.StatusOK, meal)
 }

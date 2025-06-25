@@ -1,5 +1,7 @@
 package meal
 
+import "enguete/modules/group"
+
 type MealError struct {
 	Error string `json:"error"`
 }
@@ -71,7 +73,8 @@ type ResponseNewMeal struct {
 }
 
 type MealInformation struct {
-	MealID           string `json:"mealId"`
+	MealId           string `json:"mealId"`
+	GroupId          string `json:"groupId"`
 	Title            string `json:"title"`
 	Closed           bool   `json:"closed"`
 	Fulfilled        bool   `json:"fulfilled"`
@@ -79,22 +82,44 @@ type MealInformation struct {
 	MealType         string `json:"mealType"`
 	Notes            string `json:"notes"`
 	ParticipantCount int    `json:"participantCount"`
+	UserPreference   string `json:"userPreference"`
 	IsCook           bool   `json:"isCook"`
 }
 
-type MealParticipant struct {
-	UserId     string `json:"userId"`
-	MealId     string `json:"mealId"`
-	Username   string `json:"username"`
-	Preference string `json:"preference"`
-	IsCook     bool   `json:"isCook"`
+type MealPreferences struct {
+	UserId       string `json:"userId"`
+	PreferenceId string `json:"preferenceId"`
+	UserGroupId  string `json:"userGroupId"`
+	MealId       string `json:"mealId"`
+	Username     string `json:"username"`
+	Preference   string `json:"preference"`
+	IsCook       bool   `json:"isCook"`
 }
 
 type Meal struct {
-	MealInformation            MealInformation   `json:"mealInformation"`
-	MealParticipantInformation []MealParticipant `json:"mealParticipants"`
+	MealInformation           MealInformation   `json:"mealInformation"`
+	MealPreferenceInformation []MealPreferences `json:"mealPreferences"`
 }
 
 type RequestMealId struct {
 	MealId string `form:"mealId" binding:"required,uuid"`
+}
+
+type RequestSyncGroupMeals struct {
+	GroupId   string `form:"groupId" binding:"required,uuid"`
+	StartDate string `form:"startDate" binding:"required,dateTime"`
+	EndDate   string `form:"endDate" binding:"required,dateTime"`
+}
+type ResponseSyncGroupMeals struct {
+	Meals      []group.MealCard `json:"meals"`
+	DeletedIds []string         `json:"deletedIds"`
+}
+type ResponsePreferenceSync struct {
+	Preferences []MealPreferences `json:"preferences"`
+	DeletedIds  []string          `json:"deletedIds"`
+}
+
+type ResponseSyncSingularMeal struct {
+	MealInformation           MealInformation        `json:"mealInformation"`
+	MealPreferenceInformation ResponsePreferenceSync `json:"mealPreferences"`
 }

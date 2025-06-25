@@ -2,7 +2,7 @@ package meal
 
 import "sort"
 
-func MergeAndSortParticipants(withPreference, withoutPreference []MealParticipant) []MealParticipant {
+func MergeAndSortParticipants(withPreference, withoutPreference []MealPreferences) []MealPreferences {
 	allParticipants := append(withPreference, withoutPreference...)
 
 	sort.Slice(allParticipants, func(i, j int) bool {

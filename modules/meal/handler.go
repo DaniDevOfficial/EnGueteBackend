@@ -9,6 +9,7 @@ func RegisterMealRoute(router *gin.Engine, db *sql.DB) {
 	registerMealRoutes(router, db)
 	registerPreferenceRoutes(router, db)
 	registerMealUpdateRoutes(router, db)
+	registerSyncRoutes(router, db)
 }
 
 func registerMealRoutes(router *gin.Engine, db *sql.DB) {
@@ -49,5 +50,14 @@ func registerMealUpdateRoutes(router *gin.Engine, db *sql.DB) {
 	})
 	router.PUT("/meals/scheduledAt", func(c *gin.Context) {
 		UpdateMealScheduledAt(c, db)
+	})
+}
+
+func registerSyncRoutes(router *gin.Engine, db *sql.DB) {
+	router.GET("/sync/group/meals", func(c *gin.Context) {
+		SyncGroupMeals(c, db)
+	})
+	router.GET("/sync/group/meal", func(c *gin.Context) {
+		SyncMealInformation(c, db)
 	})
 }

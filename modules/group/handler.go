@@ -8,6 +8,7 @@ import (
 func RegisterGroupRoute(router *gin.Engine, db *sql.DB) {
 	registerGroupRoutes(router, db)
 	registerInviteTokenRoutes(router, db)
+	registerSyncRoutes(router, db)
 }
 
 func registerGroupRoutes(router *gin.Engine, db *sql.DB) {
@@ -46,5 +47,17 @@ func registerInviteTokenRoutes(router *gin.Engine, db *sql.DB) {
 	})
 	router.POST("/groups/invite/join/", func(c *gin.Context) {
 		JoinGroupWithInviteToken(c, db)
+	})
+}
+
+func registerSyncRoutes(router *gin.Engine, db *sql.DB) {
+	router.GET("/sync/groups", func(c *gin.Context) {
+		SyncAllGroups(c, db)
+	})
+	router.GET("/sync/group", func(c *gin.Context) {
+		SyncSpecificGroup(c, db)
+	})
+	router.GET("/sync/group/members", func(c *gin.Context) {
+		SyncGroupMembers(c, db)
 	})
 }

@@ -135,13 +135,15 @@ func GetGroupMembersFromDb(groupId string, db *sql.DB) ([]Member, error) {
     		ug.group_id,
     		u.user_id,
     		u.username,
+    		ug.joined_at,
+    		ug.user_group_id,
     		ARRAY_AGG(ur.role) AS user_roles
 		FROM user_groups ug
 		INNER JOIN users u ON ug.user_id = u.user_id
 		INNER JOIN user_group_roles ur ON ur.group_id = ug.group_id AND ur.user_id = u.user_id
 		WHERE ug.group_id = $1
-		GROUP BY ug.group_id, u.user_id, u.username;
-`
+		GROUP BY ug.group_id, u.user_id, u.username, ug.user_group_id;
+` //TODO: add deleted check
 	rows, err := db.Query(query, groupId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -157,7 +159,7 @@ func GetGroupMembersFromDb(groupId string, db *sql.DB) ([]Member, error) {
 		var member Member
 		var userRoles pq.StringArray
 
-		err = rows.Scan(&member.GroupId, &member.UserId, &member.Username, &userRoles)
+		err = rows.Scan(&member.GroupId, &member.UserId, &member.Username, &member.JoinedAt, &member.UserGroupId, &userRoles)
 		if err != nil {
 			return nil, err
 		}
@@ -168,10 +170,44 @@ func GetGroupMembersFromDb(groupId string, db *sql.DB) ([]Member, error) {
 	return members, nil
 }
 
+func GetDeletedGroupMembersFromDb(groupId string, db *sql.DB) ([]string, error) {
+	query := `
+		SELECT ug.user_group_id
+		FROM user_groups ug
+		WHERE ug.group_id = $1
+		AND ug.deleted_at IS NOT NULL
+	`
+
+	rows, err := db.Query(query, groupId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
+
+	var deletedUserIds []string
+	for rows.Next() {
+		var userGroupsId string
+		if err := rows.Scan(&userGroupsId); err != nil {
+			return nil, err
+		}
+		deletedUserIds = append(deletedUserIds, userGroupsId)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return deletedUserIds, nil
+}
+
 func GetMealsInGroupDB(filters FilterGroupRequest, userId string, db *sql.DB) ([]MealCard, error) {
 	query := `
         SELECT 
             m.meal_id,
+            m.group_id,
             m.title,
             m.closed,
             m.fulfilled,
@@ -180,15 +216,14 @@ func GetMealsInGroupDB(filters FilterGroupRequest, userId string, db *sql.DB) ([
             m.notes,
             COUNT(CASE WHEN mp.preference = 'opt-in' OR mp.preference = 'eat later' THEN 1 END) AS participant_count,
             COALESCE(user_pref.preference, 'undecided') AS user_preference,
-            CASE WHEN mc.user_id IS NOT NULL THEN true ELSE false END AS is_cook
+            COALESCE(user_pref.is_cook, FALSE) AS is_cook
         FROM meals m
         LEFT JOIN meal_preferences mp ON mp.meal_id = m.meal_id
         LEFT JOIN meal_preferences user_pref ON user_pref.meal_id = m.meal_id AND user_pref.user_id = $2
-        LEFT JOIN meal_cooks mc ON mc.meal_id = m.meal_id AND mc.user_id = $2
         WHERE m.group_id = $1
         AND ($3::timestamp IS NULL OR $4::timestamp IS NULL OR m.date_time BETWEEN $3 AND $4)
-
-        GROUP BY m.meal_id, user_pref.preference, mc.user_id
+		
+        GROUP BY m.meal_id, user_pref.preference
         ORDER BY m.date_time desc 
 `
 	rows, err := db.Query(query, filters.GroupId, userId, filters.StartDateFilter, filters.EndDateFilter)
@@ -206,6 +241,7 @@ func GetMealsInGroupDB(filters FilterGroupRequest, userId string, db *sql.DB) ([
 		var mealCard MealCard
 		err := rows.Scan(
 			&mealCard.MealId,
+			&mealCard.GroupId,
 			&mealCard.Title,
 			&mealCard.Closed,
 			&mealCard.Fulfilled,
@@ -449,7 +485,8 @@ var ErrNoMatchingGroupOrUser = errors.New("no matching group or user found for d
 
 func LeaveGroupInDB(groupId string, userId string, tx *sql.Tx) error {
 	query := `
-		DELETE FROM user_groups
+		UPDATE user_groups
+		SET deleted_at = NOW()
 		WHERE group_id = $1
 		AND user_id = $2
 	`
@@ -483,4 +520,88 @@ func RemovePreferencesInOpenMealsInGroup(userId string, groupId string, tx *sql.
 `
 	_, err := tx.Exec(query, userId, groupId)
 	return err
+}
+
+func GetAllGroupsForUser(userId string, db *sql.DB) ([]GroupInfo, error) {
+	query := `
+		SELECT 
+			g.group_id,
+			g.group_name,
+			COUNT(DISTINCT ug.user_id) AS user_count,
+			ARRAY_AGG(COALESCE(ur.role, '')) AS user_roles
+		FROM groups g 
+		INNER JOIN user_groups ug ON ug.group_id = g.group_id AND ug.user_id = $1
+		LEFT JOIN user_group_roles ur ON ur.group_id = g.group_id AND ur.user_id = $1
+		WHERE g.deleted_at IS NULL
+		AND ug.deleted_at IS NULL 
+		AND (
+		$2::timestamp IS NULL
+		OR GREATEST(
+			COALESCE(g.updated_at, 'epoch'),
+			COALESCE(ug.updated_at, 'epoch')
+		) > $2::timestamp
+		)
+		GROUP BY g.group_id
+		
+	`
+	//TODO: add deleted check
+	/**
+
+	 */
+	rows, err := db.Query(query, userId, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var groups []GroupInfo
+	for rows.Next() {
+		var group GroupInfo
+		var userRoles pq.StringArray
+
+		err := rows.Scan(&group.GroupId, &group.GroupName, &group.UserCount, &userRoles)
+		if err != nil {
+			return nil, err
+		}
+		group.UserRoles = userRoles
+		groups = append(groups, group)
+	}
+
+	return groups, nil
+}
+
+func GetAllDeletedGroupsForUser(userId string, lastRequestDatetime *string, db *sql.DB) ([]string, error) {
+	query := `
+		SELECT g.group_id
+		FROM groups g
+		INNER JOIN user_groups ug ON ug.group_id = g.group_id 
+		WHERE ug.user_id = $1
+		AND (
+		    g.deleted_at IS NOT NULL
+	 		AND ($2::timestamp IS NULL OR g.deleted_at >= $2::timestamp) 
+		) OR (
+		    ug.deleted_at IS NOT NULL
+		    AND ($2::timestamp IS NULL OR ug.deleted_at >= $2::timestamp)
+		)
+	`
+	rows, err := db.Query(query, userId, lastRequestDatetime)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var groupIds []string
+	for rows.Next() {
+		var groupId string
+		if err := rows.Scan(&groupId); err != nil {
+			return nil, err
+		}
+		groupIds = append(groupIds, groupId)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return groupIds, nil
 }

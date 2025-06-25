@@ -66,9 +66,9 @@ func GetUsersGroupByUserIdFromDB(userId string, db *sql.DB) ([]GroupCard, error)
 			COUNT(DISTINCT ug.user_id) AS user_count
 		FROM
 			groups g
-		LEFT JOIN 
+		INNER JOIN 
 			user_groups ug ON g.group_id = ug.group_id
-		LEFT JOIN 
+		INNER JOIN 
 			users u ON ug.user_id = u.user_id
 		WHERE 
 			u.user_id = $1
@@ -91,7 +91,7 @@ func GetUsersGroupByUserIdFromDB(userId string, db *sql.DB) ([]GroupCard, error)
 
 	for rows.Next() {
 		var thisUserGroup GroupCard
-		err := rows.Scan(&thisUserGroup.GroupId, &thisUserGroup.GroupName, &thisUserGroup.AmountOfPeopleInGroup)
+		err := rows.Scan(&thisUserGroup.GroupId, &thisUserGroup.GroupName, &thisUserGroup.UserCount)
 		if err != nil {
 			return userGroups, err
 		}
