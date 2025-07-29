@@ -1,7 +1,6 @@
 package main
 
 import (
-	_ "enguete/docs"
 	"enguete/modules/dev"
 	"enguete/modules/group"
 	"enguete/modules/management"
