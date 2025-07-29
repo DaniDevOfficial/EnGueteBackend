@@ -9,9 +9,9 @@ import (
 	"enguete/modules/user"
 	"enguete/util/db"
 	"enguete/util/validator"
-	"fmt"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/joho/godotenv"
+	"os"
+
 	"log"
 	"net/http"
 
@@ -19,27 +19,39 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-// @title EnGuete API
-// @version 1.0
-// @description This is the API for EnGuete application.
-// @host localhost:8000
-// @BasePath /
-// @schemes http
 func main() {
-	dbConnection := db.InitDB()
-	validator.InitCustomValidators()
-	router := gin.Default()
-	router.GET("/documentation/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
+	if os.Getenv("RAILWAY_ENVIRONMENT") == "" {
+		err := godotenv.Load()
+		if err != nil {
+			log.Println("⚠️ No .env file found – continuing without it")
+		}
+	}
+
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		log.Fatal("❌ DATABASE_URL is not set")
+	}
+	dbConnection := db.InitDB(dbURL)
+
+	validator.InitCustomValidators()
+
+	router := gin.Default()
 	router.Use(corsMiddleware())
+
 	dev.RegisterDevRoutes(router, dbConnection)
 	user.RegisterUserRoute(router, dbConnection)
 	group.RegisterGroupRoute(router, dbConnection)
 	meal.RegisterMealRoute(router, dbConnection)
 	management.RegisterManagementRoute(router, dbConnection)
 
-	fmt.Println("🚀 Server is listening on http://localhost:8000/")
-	log.Fatal(router.Run("0.0.0.0:8000"))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000"
+	}
+
+	log.Printf("🚀 Server is listening on http://localhost:%s/", port)
+	log.Fatal(router.Run("0.0.0.0:" + port))
 }
 
 // corsMiddleware sets the CORS headers to allow all origins.

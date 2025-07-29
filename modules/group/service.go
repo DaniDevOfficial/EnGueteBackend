@@ -709,7 +709,6 @@ func SyncAllGroups(c *gin.Context, db *sql.DB) {
 		DeletedIds: deleteGroupIds,
 	}
 	c.JSON(http.StatusOK, response)
-
 }
 
 func SyncSpecificGroup(c *gin.Context, db *sql.DB) {
