@@ -46,11 +46,11 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8001"
+		port = "8000"
 	}
-
-	log.Printf("🚀 Server is listening on http://localhost:%s/", port)
-	log.Fatal(router.Run("0.0.0.0:" + port))
+	baseUrl := "0.0.0.0:" + port
+	log.Printf("🚀 Server is listening on %s", baseUrl)
+	log.Fatal(router.Run(baseUrl))
 }
 
 // corsMiddleware sets the CORS headers to allow all origins.
