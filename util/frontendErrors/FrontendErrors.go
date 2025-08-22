@@ -27,8 +27,9 @@ const (
 	PasswordFormatTooLongError                = "passwordFormatTooLongError"
 	PasswordDoesNotMatchError                 = "passwordDoesNotMatchError"
 
-	UsernameIsAlreadyTakenError  = "usernameIsAlreadyTakenError"
-	WrongUsernameOrPasswordError = "wrongUsernameOrPasswordError"
+	UsernameIsAlreadyTakenError        = "usernameIsAlreadyTakenError"
+	UsernameOrEmailIsAlreadyTakenError = "usernameOrEmailIsAlreadyTakenError"
+	WrongUsernameOrPasswordError       = "wrongUsernameOrPasswordError"
 
 	MealDoesNotExistError = "mealDoesNotExistError"
 

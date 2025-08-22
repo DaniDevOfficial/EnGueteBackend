@@ -17,6 +17,17 @@ func GetUserIdByName(username string, db *sql.DB) (string, error) {
 	return userId, err
 }
 
+func CheckIfUserExistsByEmailOrUsername(email, username string, db *sql.DB) (bool, error) {
+	query := `SELECT COUNT(*) FROM users WHERE email ILIKE $1 OR username ILIKE $2`
+	row := db.QueryRow(query, email, username)
+	var count int
+	err := row.Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 func GetUserByName(username string, db *sql.DB) (UserFromDB, error) {
 	query := `SELECT 
 				username,

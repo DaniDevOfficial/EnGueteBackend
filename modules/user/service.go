@@ -51,19 +51,20 @@ func CreateNewUser(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	userId, err := GetUserIdByName(newUser.Username, db)
+	emailOrUsernameInUse, err := CheckIfUserExistsByEmailOrUsername(newUser.Email, newUser.Username, db)
 	if err != nil {
 		log.Println(err)
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
-	if userId != "" {
-		responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.UsernameIsAlreadyTakenError, "Username is already taken")
+	if emailOrUsernameInUse {
+		responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.UsernameOrEmailIsAlreadyTakenError, "Username is already taken")
 		return
 	}
 
 	hashedPassword, err := hashing.HashPassword(newUser.Password)
 	if err != nil {
+		log.Println(err)
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
@@ -76,6 +77,7 @@ func CreateNewUser(c *gin.Context, db *sql.DB) {
 
 	newUserId, err := CreateUserInDB(userInDB, db)
 	if err != nil {
+		log.Println(err)
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
@@ -93,6 +95,7 @@ func CreateNewUser(c *gin.Context, db *sql.DB) {
 
 	jwtToken, err := jwt.CreateToken(jwtUserData)
 	if err != nil {
+		log.Println(err)
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
