@@ -115,6 +115,7 @@ func GetGroupInformationFromDb(groupId string, userId string, db *sql.DB) (Group
 	LEFT JOIN user_groups ug ON ug.group_id = g.group_id
 	LEFT JOIN user_group_roles ur ON ur.group_id = g.group_id AND ur.user_id = $2
 	WHERE g.group_id = $1
+	AND ug.deleted_at IS NULL
 	GROUP BY g.group_id
 `
 
@@ -142,6 +143,8 @@ func GetGroupMembersFromDb(groupId string, db *sql.DB) ([]Member, error) {
 		INNER JOIN users u ON ug.user_id = u.user_id
 		INNER JOIN user_group_roles ur ON ur.group_id = ug.group_id AND ur.user_id = u.user_id
 		WHERE ug.group_id = $1
+		AND ug.deleted_at IS NULL
+		
 		GROUP BY ug.group_id, u.user_id, u.username, ug.user_group_id;
 ` //TODO: add deleted check
 	rows, err := db.Query(query, groupId)
@@ -282,9 +285,11 @@ func IsUserMemberOfGroupViaMealId(mealId string, userId string, db *sql.DB) (str
 		g.group_id
 	FROM groups g
 	INNER JOIN meals m ON m.group_id = g.group_id
-	INNER JOIN user_groups gu ON gu.group_id = g.group_id
+	INNER JOIN user_groups ug ON ug.group_id = g.group_id
 	WHERE m.meal_id = $2
-	AND gu.user_id = $1
+	AND ug.user_id = $1
+	AND ug.deleted_at IS NULL
+
 `
 	var exists string
 	err := db.QueryRow(query, userId, mealId).Scan(&exists)
@@ -301,9 +306,11 @@ func IsUserMemberOfGroupInDB(groupId string, userId string, db *sql.DB) (int, er
 	query := `
 	SELECT 
 		1
-	FROM user_groups gu
-	WHERE gu.group_id = $2
-	AND gu.user_id = $1
+	FROM user_groups ug
+	WHERE ug.group_id = $2
+	AND ug.user_id = $1
+	AND ug.deleted_at IS NULL
+
 `
 	var exists int
 	err := db.QueryRow(query, userId, groupId).Scan(&exists)
@@ -357,9 +364,10 @@ func GetUserRolesInGroupViaMealId(mealId string, userId string, db *sql.DB) ([]s
 	SELECT ugr.role
 	FROM user_group_roles ugr
 	LEFT JOIN meals m ON m.group_id = ugr.group_id
-	LEFT JOIN user_groups gu ON gu.group_id = ugr.group_id
+	LEFT JOIN user_groups ug ON ug.group_id = ugr.group_id
 	WHERE m.meal_id = $2
 	AND ugr.user_id = $1
+	AND ug.deleted_at IS NULL
 `
 	rows, err := db.Query(query, userId, mealId)
 	if err != nil {

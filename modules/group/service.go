@@ -799,5 +799,6 @@ func SyncGroupMembers(c *gin.Context, db *sql.DB) {
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
+	log.Println(memberSyncResponse)
 	c.JSON(http.StatusOK, memberSyncResponse)
 }

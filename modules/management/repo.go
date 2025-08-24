@@ -4,9 +4,11 @@ import "database/sql"
 
 func KickUSerFromGroupInDB(userId string, groupId string, db *sql.DB) error {
 	query := `
-	DELETE FROM user_groups
-	WHERE user_id = $1 AND group_id = $2
-` // TODO: remove any not closed optin out states for this user
+		UPDATE user_groups
+		SET deleted_at = NOW()
+		WHERE group_id = $1
+		AND user_id = $2
+	` // TODO: remove any not closed optin out states for this user
 	_, err := db.Exec(query, userId, groupId)
 	return err
 }
