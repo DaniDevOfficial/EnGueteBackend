@@ -164,9 +164,26 @@ func UpdatePasswordInDb(newPassword string, userId string, db *sql.DB) error {
 }
 
 func DeleteUserInDB(userId string, db *sql.DB) (bool, error) {
-	query := `	UPDATE users
+	query := `	
+		UPDATE users
 				SET deleted_at = NOW()
-				WHERE user_id = $1 AND deleted_at IS NULL
+				WHERE user_id = $1 AND deleted_at IS NULL;
+
+		UPDATE user_groups 
+				SET deleted_at = NOW()
+				WHERE user_id = $1 AND deleted_at IS NULL;
+
+		UPDATE meal_preferences
+				SET deleted_at = NOW()
+				WHERE user_id = $1 AND deleted_at IS NULL;
+
+		DELETE FROM refresh_tokens
+				WHERE user_id = $1;
+
+		DELETE FROM user_group_roles
+				WHERE user_id = $1;
+		
+	
 	`
 	_, err := db.Exec(query, userId)
 	if err != nil {

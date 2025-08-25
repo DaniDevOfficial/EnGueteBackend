@@ -7,7 +7,17 @@ func KickUSerFromGroupInDB(userId string, groupId string, db *sql.DB) error {
 		UPDATE user_groups
 		SET deleted_at = NOW()
 		WHERE group_id = $1
-		AND user_id = $2
+		AND user_id = $2;
+
+		UPDATE meal_preferences 
+		SET deleted_at = NOW()
+		WHERE group_id = $1
+		AND user_id = $2;
+
+		DELETE FROM user_group_roles
+		WHERE group_id = $1
+		AND user_id = $2;
+
 	` // TODO: remove any not closed optin out states for this user
 	_, err := db.Exec(query, userId, groupId)
 	return err

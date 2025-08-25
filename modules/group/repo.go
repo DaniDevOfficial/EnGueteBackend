@@ -312,7 +312,8 @@ func IsUserMemberOfGroupViaMealId(mealId string, userId string, db *sql.DB) (str
 	WHERE m.meal_id = $2
 	AND ug.user_id = $1
 	AND ug.deleted_at IS NULL
-
+	AND m.deleted_at IS NULL
+	AND g.deleted_at IS NULL
 `
 	var exists string
 	err := db.QueryRow(query, userId, mealId).Scan(&exists)
@@ -391,6 +392,7 @@ func GetUserRolesInGroupViaMealId(mealId string, userId string, db *sql.DB) ([]s
 	WHERE m.meal_id = $2
 	AND ugr.user_id = $1
 	AND ug.deleted_at IS NULL
+	AND m.deleted_at IS NULL
 `
 	rows, err := db.Query(query, userId, mealId)
 	if err != nil {

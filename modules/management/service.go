@@ -218,6 +218,16 @@ func AddRoleToUser(c *gin.Context, db *sql.DB) {
 		return
 	}
 
+	inGroup, err := group.IsUserInGroup(roleData.GroupId, roleData.UserId, db)
+	if err != nil {
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+	if !inGroup {
+		responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.UserDoesNotExistError, "User does not exist in this group")
+		return
+	}
+
 	err = group.AddRoleToUserInGroup(roleData.GroupId, roleData.UserId, role, db)
 	if err != nil {
 		if errors.Is(err, group.ErrNothingHappened) {
