@@ -41,7 +41,7 @@ func AddUserToGroupWithTransaction(groupId string, userId string, tx *sql.Tx) (s
 
 	updateQuery := `
 		UPDATE user_groups
-		SET deleted_at = NULL
+		SET deleted_at = NULL, joined_at = NOW()
 		WHERE group_id = $1 AND user_id = $2 AND deleted_at IS NOT NULL
 		RETURNING user_group_id
 	`
@@ -86,8 +86,30 @@ func AddRoleToUserInGroup(groupId string, userId string, role string, db *sql.DB
 
 func DeleteGroupInDB(groupId string, db *sql.DB) error {
 	query := `
-		DELETE FROM groups
-		WHERE group_id = $1
+		UPDATE groups
+		SET deleted_at = NOW()
+		WHERE group_id = $1 AND deleted_at IS NULL;
+
+		DELETE FROM user_groups
+		SET deleted_at = NOW()
+		WHERE group_id = $1 AND deleted_at IS NULL;
+
+		DELETE FROM user_groups
+		WHERE group_id = $1;
+		
+		DELETE FROM meal_preferences mp
+		USING meals m
+		WHERE mp.meal_id = m.meal_id
+		AND m.group_id = $1;
+		
+		DELETE FROM meals
+		WHERE group_id = $1;
+
+		DELETE FROM user_group_roles
+		WHERE group_id = $1;
+
+		DELETE FROM group_invites
+		WHERE group_id = $1;
 	`
 
 	result, err := db.Exec(query, groupId)
@@ -108,7 +130,7 @@ func DeleteGroupInDB(groupId string, db *sql.DB) error {
 }
 
 func UpdateGroupNameInDB(groupInfo RequestUpdateGroupName, db *sql.Tx) error {
-	query := `UPDATE groups SET group_name = $1 WHERE group_id = $2`
+	query := `UPDATE groups SET group_name = $1 WHERE group_id = $2 AND deleted_at IS NULL`
 
 	result, err := db.Exec(query, groupInfo.GroupName, groupInfo.GroupId)
 	if err != nil {
@@ -138,7 +160,9 @@ func GetGroupInformationFromDb(groupId string, userId string, db *sql.DB) (Group
 	LEFT JOIN user_groups ug ON ug.group_id = g.group_id
 	LEFT JOIN user_group_roles ur ON ur.group_id = g.group_id AND ur.user_id = $2
 	WHERE g.group_id = $1
+	AND g.deleted_at IS NULL
 	AND ug.deleted_at IS NULL
+	AND ug.user_id = $2
 	GROUP BY g.group_id
 `
 
@@ -162,14 +186,16 @@ func GetGroupMembersFromDb(groupId string, db *sql.DB) ([]Member, error) {
     		ug.joined_at,
     		ug.user_group_id,
     		ARRAY_AGG(ur.role) AS user_roles
-		FROM user_groups ug
+		FROM groups g
+		INNER JOIN user_groups ug ON ug.group_id = g.group_id
 		INNER JOIN users u ON ug.user_id = u.user_id
 		INNER JOIN user_group_roles ur ON ur.group_id = ug.group_id AND ur.user_id = u.user_id
-		WHERE ug.group_id = $1
+		WHERE g.group_id = $1
+		AND g.deleted_at IS NULL
 		AND ug.deleted_at IS NULL
 		
 		GROUP BY ug.group_id, u.user_id, u.username, ug.user_group_id;
-` //TODO: add deleted check
+`
 	rows, err := db.Query(query, groupId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -244,11 +270,12 @@ func GetMealsInGroupDB(filters FilterGroupRequest, userId string, db *sql.DB) ([
             COALESCE(user_pref.preference, 'undecided') AS user_preference,
             COALESCE(user_pref.is_cook, FALSE) AS is_cook
         FROM meals m
-        LEFT JOIN meal_preferences mp ON mp.meal_id = m.meal_id
-        LEFT JOIN meal_preferences user_pref ON user_pref.meal_id = m.meal_id AND user_pref.user_id = $2
+        LEFT JOIN meal_preferences mp ON mp.meal_id = m.meal_id AND mp.deleted_at IS NULL
+        LEFT JOIN meal_preferences user_pref ON user_pref.meal_id = m.meal_id AND user_pref.user_id = $2 AND user_pref.deleted_at IS NULL
         WHERE m.group_id = $1
+    	AND m.deleted_at IS NULL
         AND ($3::timestamp IS NULL OR $4::timestamp IS NULL OR m.date_time BETWEEN $3 AND $4)
-		
+	
         GROUP BY m.meal_id, user_pref.preference
         ORDER BY m.date_time desc 
 `
@@ -441,10 +468,7 @@ var ErrNotFound = errors.New("not found")
 
 func ValidateInviteTokenInDB(inviteToken string, db *sql.DB) (string, error) {
 	query := `
-		WITH deleted AS (
-			DELETE FROM group_invites
-			WHERE invite_token = $1 AND expires_at <= NOW()
-		)
+
 		SELECT group_id FROM group_invites
 		WHERE invite_token = $1
 	`
@@ -462,14 +486,11 @@ func ValidateInviteTokenInDB(inviteToken string, db *sql.DB) (string, error) {
 
 func GetAllInviteTokensInAGroupFromDB(groupId string, db *sql.DB) ([]InviteToken, error) {
 	query := `
-		WITH deleted AS (
-			DELETE FROM group_invites
-			WHERE expires_at <= NOW()
-		)
 		SELECT invite_token, expires_at
 		FROM group_invites
 		WHERE group_id = $1
 		AND (expires_at IS NULL OR expires_at > NOW())
+		AND deleted_at IS NULL
 		ORDER BY expires_at;
 	`
 
@@ -494,8 +515,9 @@ func GetAllInviteTokensInAGroupFromDB(groupId string, db *sql.DB) ([]InviteToken
 
 func VoidInviteTokenInDB(inviteToken string, db *sql.DB) error {
 	query := `
-	DELETE FROM group_invites gi
-	WHERE gi.invite_token = $1
+	UPDATE group_invites
+	SET deleted_at = NOW()
+	WHERE invite_token = $1;
 `
 	result, err := db.Exec(query, inviteToken)
 	if err != nil {
@@ -521,7 +543,17 @@ func LeaveGroupInDB(groupId string, userId string, tx *sql.Tx) error {
 		UPDATE user_groups
 		SET deleted_at = NOW()
 		WHERE group_id = $1
-		AND user_id = $2
+		AND user_id = $2;
+
+		DELETE FROM user_group_roles
+		WHERE group_id = $1
+		AND user_id = $2;
+	
+		DELETE FROM meal_preferences
+		WHERE user_id = $2
+		AND meal_id IN (
+		    SELECT meal_id FROM meals WHERE group_id = $1 AND closed = FALSE
+		);
 	`
 
 	result, err := tx.Exec(query, groupId, userId)
@@ -577,10 +609,6 @@ func GetAllGroupsForUser(userId string, db *sql.DB) ([]GroupInfo, error) {
 		GROUP BY g.group_id
 		
 	`
-	//TODO: add deleted check
-	/**
-
-	 */
 	rows, err := db.Query(query, userId, nil)
 	if err != nil {
 		return nil, err
@@ -609,13 +637,13 @@ func GetAllDeletedGroupsForUser(userId string, lastRequestDatetime *string, db *
 		FROM groups g
 		INNER JOIN user_groups ug ON ug.group_id = g.group_id 
 		WHERE ug.user_id = $1
-		AND (
+		AND ((
 		    g.deleted_at IS NOT NULL
 	 		AND ($2::timestamp IS NULL OR g.deleted_at >= $2::timestamp) 
 		) OR (
 		    ug.deleted_at IS NOT NULL
-		    AND ($2::timestamp IS NULL OR ug.deleted_at >= $2::timestamp)
-		)
+		    AND ($2::timestamp IS NULL OR ug.deleted_at >= $2::timestamp) -- this is currently not used
+		))
 	`
 	rows, err := db.Query(query, userId, lastRequestDatetime)
 	if err != nil {
