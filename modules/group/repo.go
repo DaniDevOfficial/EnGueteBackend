@@ -37,10 +37,33 @@ func AddUserToGroupInDB(groupId string, userId string, db *sql.DB) (bool, error)
 }
 
 func AddUserToGroupWithTransaction(groupId string, userId string, tx *sql.Tx) (string, error) {
-	query := `INSERT INTO user_groups (group_id, user_id) VALUES ($1, $2) RETURNING user_group_id`
 	var userGroupId string
-	err := tx.QueryRow(query, groupId, userId).Scan(&userGroupId)
-	return userGroupId, err
+
+	updateQuery := `
+		UPDATE user_groups
+		SET deleted_at = NULL
+		WHERE group_id = $1 AND user_id = $2 AND deleted_at IS NOT NULL
+		RETURNING user_group_id
+	`
+	err := tx.QueryRow(updateQuery, groupId, userId).Scan(&userGroupId)
+	if err == nil {
+		return userGroupId, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return "", err
+	}
+
+	insertQuery := `
+		INSERT INTO user_groups (group_id, user_id)
+		VALUES ($1, $2)
+		RETURNING user_group_id
+	`
+	err = tx.QueryRow(insertQuery, groupId, userId).Scan(&userGroupId)
+	if err != nil {
+		return "", err
+	}
+
+	return userGroupId, nil
 }
 
 func AddRoleToUserInGroupWithTransaction(groupId string, userId string, role string, userGroupId string, tx *sql.Tx) error {
