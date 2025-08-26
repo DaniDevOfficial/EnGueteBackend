@@ -32,10 +32,6 @@ func CheckValidJWT(c *gin.Context) {
 	}
 }
 
-func GetAllUsers(c *gin.Context, db *sql.DB) {
-
-}
-
 func ValidUUIDCheck(c *gin.Context) {
 	var requestData struct {
 		UUID string `json:"uuid" binding:"required,uuid"`

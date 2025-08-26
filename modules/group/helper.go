@@ -35,11 +35,11 @@ func IsUserInGroup(groupId string, userId string, db *sql.DB) (bool, error) {
 	return true, nil // User is in group
 }
 
-// CheckIfUserIsAllowedToPerformActionViaMealId Check if the user is able to perform an action in a group via mealId
+// CheckIfUserIsAllowedToPerformActionViaMealId Check if the user is able to perform an action in a group via mealId.
 //
-// return true => user is in group and can perform action
+// return true => user is in group and can perform action.
 //
-// return err => internal server error
+// return err => internal server error.
 //
 // return false => user is not in group or cant perform action
 func CheckIfUserIsAllowedToPerformActionViaMealId(mealId string, userId string, actionToPerform string, db *sql.DB) (bool, []string, error) {
@@ -50,11 +50,11 @@ func CheckIfUserIsAllowedToPerformActionViaMealId(mealId string, userId string, 
 	return roles.CanPerformAction(userRoles, actionToPerform), userRoles, nil
 }
 
-// CheckIfUserIsAllowedToPerformAction Check if the user is able to perform an action in a group
+// CheckIfUserIsAllowedToPerformAction Check if the user is able to perform an action in a group.
 //
-// return true => user is in group and can perform action
+// return true => user is in group and can perform action.
 //
-// return err => internal server error
+// return err => internal server error.
 //
 // return false => user is not in group or cant perform action
 func CheckIfUserIsAllowedToPerformAction(groupId string, userId string, actionToPerform string, db *sql.DB) (isAllowedToPerformAction bool, userRoles []string, error error) {

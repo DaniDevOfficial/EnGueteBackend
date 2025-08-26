@@ -20,22 +20,6 @@ func CreateNewGroupInDBWithTransaction(groupData RequestNewGroup, userId string,
 	return groupId, nil
 }
 
-func AddUserToGroupInDB(groupId string, userId string, db *sql.DB) (bool, error) {
-	query := `
-		INSERT INTO user_groups (group_id, user_id)
-		VALUES ($1, $2)
-		ON CONFLICT (group_id, user_id) DO NOTHING
-		RETURNING true
-	`
-
-	var result bool
-	err := db.QueryRow(query, groupId, userId).Scan(&result)
-	if errors.Is(err, sql.ErrNoRows) {
-		return false, nil
-	}
-	return result, err
-}
-
 func AddUserToGroupWithTransaction(groupId string, userId string, tx *sql.Tx) (string, error) {
 	var userGroupId string
 
