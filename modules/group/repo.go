@@ -91,10 +91,6 @@ func DeleteGroupInDB(groupId string, db *sql.DB) error {
 		WHERE group_id = $1 AND deleted_at IS NULL;
 
 		DELETE FROM user_groups
-		SET deleted_at = NOW()
-		WHERE group_id = $1 AND deleted_at IS NULL;
-
-		DELETE FROM user_groups
 		WHERE group_id = $1;
 		
 		DELETE FROM meal_preferences mp
@@ -276,7 +272,7 @@ func GetMealsInGroupDB(filters FilterGroupRequest, userId string, db *sql.DB) ([
     	AND m.deleted_at IS NULL
         AND ($3::timestamp IS NULL OR $4::timestamp IS NULL OR m.date_time BETWEEN $3 AND $4)
 	
-        GROUP BY m.meal_id, user_pref.preference
+        GROUP BY m.meal_id, user_pref.preference, m.date_time
         ORDER BY m.date_time desc 
 `
 	rows, err := db.Query(query, filters.GroupId, userId, filters.StartDateFilter, filters.EndDateFilter)
@@ -573,20 +569,6 @@ func LeaveGroupInDB(groupId string, userId string, tx *sql.Tx) error {
 	return nil
 }
 
-func RemovePreferencesInOpenMealsInGroup(userId string, groupId string, tx *sql.Tx) error {
-	query := `
-		DELETE FROM meal_preferences mp
-		USING meals m
-		WHERE m.meal_id = mp.meal_id
-		  AND m.group_id = $2
-		  AND mp.user_id = $1
-		  AND NOT m.closed
-		  AND NOT m.fulfilled;
-`
-	_, err := tx.Exec(query, userId, groupId)
-	return err
-}
-
 func GetAllGroupsForUser(userId string, db *sql.DB) ([]GroupInfo, error) {
 	query := `
 		SELECT 
@@ -639,7 +621,7 @@ func GetAllDeletedGroupsForUser(userId string, lastRequestDatetime *string, db *
 		WHERE ug.user_id = $1
 		AND ((
 		    g.deleted_at IS NOT NULL
-	 		AND ($2::timestamp IS NULL OR g.deleted_at >= $2::timestamp) 
+	 		AND ($2::timestamp IS NULL OR g.deleted_at >= $2::timestamp)  -- this is currently not used
 		) OR (
 		    ug.deleted_at IS NOT NULL
 		    AND ($2::timestamp IS NULL OR ug.deleted_at >= $2::timestamp) -- this is currently not used

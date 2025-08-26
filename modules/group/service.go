@@ -659,15 +659,6 @@ func LeaveGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = RemovePreferencesInOpenMealsInGroup(jwtPayload.UserId, groupData.GroupId, tx)
-
-	if err != nil {
-		err = tx.Rollback()
-		responses.GenericInternalServerError(c.Writer)
-		return
-	}
-	//TODO: delete roles
-	//TODO: delete isCook
 	err = tx.Commit()
 	if err != nil {
 		responses.GenericInternalServerError(c.Writer)
