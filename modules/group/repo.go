@@ -558,11 +558,12 @@ func GetAllGroupsForUser(userId string, db *sql.DB) ([]GroupInfo, error) {
 		SELECT 
 			g.group_id,
 			g.group_name,
-			COUNT(DISTINCT ug.user_id) AS user_count,
+			COUNT(DISTINCT ugAll.user_id) AS user_count,
 			ARRAY_AGG(COALESCE(ur.role, '')) AS user_roles
 		FROM groups g 
 		INNER JOIN user_groups ug ON ug.group_id = g.group_id AND ug.user_id = $1
 		LEFT JOIN user_group_roles ur ON ur.group_id = g.group_id AND ur.user_id = $1
+		LEFT JOIN user_groups ugAll ON ug.group_id = g.group_id
 		WHERE g.deleted_at IS NULL
 		AND ug.deleted_at IS NULL 
 		AND (
