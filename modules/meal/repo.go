@@ -358,7 +358,7 @@ func GetAllMealsInGroupInTimeframe(groupId string, userId string, startDate stri
             m.date_time,
             m.meal_type,
             m.notes,
-            COUNT(CASE WHEN mp.preference = 'opt-in' OR mp.preference = 'eat later' THEN 1 END) AS participant_count,
+    		SUM(CASE WHEN mp.preference != 'undecided' THEN 1 ELSE 0 END) AS participant_count,
             COALESCE(user_pref.preference, 'undecided') AS user_preference,
             COALESCE(user_pref.is_cook, FALSE) AS is_cook
         FROM meals m
@@ -367,7 +367,7 @@ func GetAllMealsInGroupInTimeframe(groupId string, userId string, startDate stri
         WHERE m.group_id = $1
     	AND m.deleted_at IS NULL
         AND (m.date_time BETWEEN $3 AND $4)
-		GROUP BY m.meal_id, user_pref.preference, user_pref.is_cook
+		GROUP BY m.meal_id, user_pref.preference, user_pref.is_cook, m.date_time
         ORDER BY m.date_time desc 
 `
 	rows, err := db.Query(query, groupId, userId, startDate, endDate)
