@@ -83,41 +83,96 @@ func AddRoleToUserInGroup(groupId string, userId string, role string, db *sql.DB
 }
 
 func DeleteGroupInDB(groupId string, db *sql.DB) error {
-	query := `
+
+	tx, err := db.Begin()
+
+	if err != nil {
+		return err
+	}
+
+	updateGroupQuery := `
 		UPDATE groups
 		SET deleted_at = NOW()
-		WHERE group_id = $1 AND deleted_at IS NULL;
+		WHERE group_id = $1 AND deleted_at IS NULL
+	`
+	_, err = tx.Exec(updateGroupQuery, groupId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
 
+	// Delete user <-> group links
+	deleteUserGroupsQuery := `
 		DELETE FROM user_groups
-		WHERE group_id = $1;
-		
+		WHERE group_id = $1
+	`
+	_, err = tx.Exec(deleteUserGroupsQuery, groupId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+
+	deleteMealPreferencesQuery := `
 		DELETE FROM meal_preferences mp
 		USING meals m
 		WHERE mp.meal_id = m.meal_id
-		AND m.group_id = $1;
-		
-		DELETE FROM meals
-		WHERE group_id = $1;
-
-		DELETE FROM user_group_roles
-		WHERE group_id = $1;
-
-		DELETE FROM group_invites
-		WHERE group_id = $1;
+		AND m.group_id = $1
 	`
-
-	result, err := db.Exec(query, groupId)
+	_, err = tx.Exec(deleteMealPreferencesQuery, groupId)
 	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+	deleteMealsQuery := `
+		DELETE FROM meals
+		WHERE group_id = $1
+	`
+	_, err = tx.Exec(deleteMealsQuery, groupId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+	deleteRolesQuery := `
+		DELETE FROM user_group_roles
+		WHERE group_id = $1
+	`
+	_, err = tx.Exec(deleteRolesQuery, groupId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
 		return err
 	}
 
-	rowsAffected, err := result.RowsAffected()
+	deleteInvitesQuery := `
+		DELETE FROM group_invites
+		WHERE group_id = $1
+	`
+	_, err = tx.Exec(deleteInvitesQuery, groupId)
 	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
 		return err
 	}
 
-	if rowsAffected == 0 {
-		return ErrNothingHappened
+	err = tx.Commit()
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -531,41 +586,6 @@ func VoidInviteTokenInDB(inviteToken string, db *sql.DB) error {
 }
 
 var ErrNoMatchingGroupOrUser = errors.New("no matching group or user found for deletion")
-
-func LeaveGroupInDB(groupId string, userId string, tx *sql.Tx) error {
-	query := `
-		UPDATE user_groups
-		SET deleted_at = NOW()
-		WHERE group_id = $1
-		AND user_id = $2;
-
-		DELETE FROM user_group_roles
-		WHERE group_id = $1
-		AND user_id = $2;
-	
-		DELETE FROM meal_preferences
-		WHERE user_id = $2
-		AND meal_id IN (
-		    SELECT meal_id FROM meals WHERE group_id = $1 AND closed = FALSE
-		);
-	`
-
-	result, err := tx.Exec(query, groupId, userId)
-	if err != nil {
-		return err
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if rowsAffected == 0 {
-		return ErrNoMatchingGroupOrUser
-	}
-
-	return nil
-}
 
 func GetAllGroupsForUser(userId string, db *sql.DB) ([]GroupInfo, error) {
 

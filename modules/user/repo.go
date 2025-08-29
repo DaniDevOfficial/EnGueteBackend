@@ -163,32 +163,82 @@ func UpdatePasswordInDb(newPassword string, userId string, db *sql.DB) error {
 	return err
 }
 
-func DeleteUserInDB(userId string, db *sql.DB) (bool, error) {
-	query := `	
-		UPDATE users
-				SET deleted_at = NOW()
-				WHERE user_id = $1 AND deleted_at IS NULL;
+func DeleteUserInDB(userId string, db *sql.DB) error {
 
-		UPDATE user_groups 
-				SET deleted_at = NOW()
-				WHERE user_id = $1 AND deleted_at IS NULL;
-
-		UPDATE meal_preferences
-				SET deleted_at = NOW()
-				WHERE user_id = $1 AND deleted_at IS NULL;
-
-		DELETE FROM refresh_tokens
-				WHERE user_id = $1;
-
-		DELETE FROM user_group_roles
-				WHERE user_id = $1;
-		
-	
-	`
-	_, err := db.Exec(query, userId)
+	tx, err := db.Begin()
 	if err != nil {
-		return false, err
+		return err
 	}
-	return true, nil
 
+	updateUserQuery := `
+		UPDATE users
+		SET deleted_at = NOW()
+		WHERE user_id = $1 AND deleted_at IS NULL
+	`
+	_, err = tx.Exec(updateUserQuery, userId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+
+	updateUserGroupsQuery := `
+		UPDATE user_groups
+		SET deleted_at = NOW()
+		WHERE user_id = $1 AND deleted_at IS NULL
+	`
+	_, err = tx.Exec(updateUserGroupsQuery, userId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+
+	updateMealPreferencesQuery := `
+		UPDATE meal_preferences
+		SET deleted_at = NOW()
+		WHERE user_id = $1 AND deleted_at IS NULL
+	`
+	_, err = tx.Exec(updateMealPreferencesQuery, userId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+
+	deleteRefreshTokensQuery := `
+		DELETE FROM refresh_tokens
+		WHERE user_id = $1
+	`
+	_, err = tx.Exec(deleteRefreshTokensQuery, userId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+	deleteUserGroupRolesQuery := `
+		DELETE FROM user_group_roles
+		WHERE user_id = $1
+	`
+	_, err = tx.Exec(deleteUserGroupRolesQuery, userId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
 }

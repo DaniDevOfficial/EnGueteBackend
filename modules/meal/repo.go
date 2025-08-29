@@ -24,19 +24,41 @@ func CreateNewMealInDBWithTransaction(newMeal RequestNewMeal, userId string, db 
 }
 
 func DeleteMealInDB(mealId string, db *sql.DB) error {
-	query := `
-		UPDATE meals
-		SET deleted_at = $1
-		WHERE meal_id = $2
-		AND deleted_at IS NULL;
 
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	updateMealQuery := `
+		UPDATE meals
+		SET deleted_at = NOW()
+		WHERE meal_id = $1 AND deleted_at IS NULL
+	`
+	_, err = tx.Exec(updateMealQuery, mealId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+
+	updatePreferencesQuery := `
 		UPDATE meal_preferences
-		SET deleted_at = $1
-		WHERE meal_id = $2
-		AND deleted_at IS NULL;
-`
-	_, err := db.Exec(query, mealId)
-	return err
+		SET deleted_at = NOW()
+		WHERE meal_id = $1 AND deleted_at IS NULL
+	`
+	_, err = tx.Exec(updatePreferencesQuery, mealId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+
+	return nil
 }
 
 var ErrNoData = errors.New("no data found")

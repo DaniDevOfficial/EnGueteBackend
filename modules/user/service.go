@@ -291,7 +291,7 @@ func DeleteUserWithJWT(c *gin.Context, db *sql.DB) {
 	}
 
 	// TODO: Do a email for validation and then handle the delete in another function
-	_, err = DeleteUserInDB(decodedJWT.UserId, db)
+	err = DeleteUserInDB(decodedJWT.UserId, db)
 	if err != nil {
 		responses.GenericInternalServerError(c.Writer)
 		return
