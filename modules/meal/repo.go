@@ -248,7 +248,7 @@ func ChangeOptInStatusMealInDB(userId string, mealId string, preference string, 
         INSERT INTO meal_preferences (meal_id, user_id, preference, updated_at)
         VALUES ($1, $2, $3, $4)
         ON CONFLICT (meal_id, user_id)
-        DO UPDATE 
+        DO UPDATE
         SET preference = EXCLUDED.preference,
             updated_at = EXCLUDED.updated_at;`
 

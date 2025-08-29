@@ -23,13 +23,27 @@ func CreateNewGroupInDBWithTransaction(groupData RequestNewGroup, userId string,
 func AddUserToGroupWithTransaction(groupId string, userId string, tx *sql.Tx) (string, error) {
 	var userGroupId string
 
+	activatePreferencesAgainQuery := `
+		UPDATE meal_preferences mp 
+		SET deleted_at = NULL
+		FROM meals m
+		WHERE mp.meal_id = m.meal_id
+		  		AND m.group_id = $1
+		  		AND mp.user_id = $2
+		  		AND mp.deleted_at IS NOT NULL
+	`
+	_, err := tx.Exec(activatePreferencesAgainQuery, groupId, userId)
+	if err != nil {
+		return "", err
+	}
+
 	updateQuery := `
 		UPDATE user_groups
 		SET deleted_at = NULL, joined_at = NOW()
 		WHERE group_id = $1 AND user_id = $2 AND deleted_at IS NOT NULL
 		RETURNING user_group_id
 	`
-	err := tx.QueryRow(updateQuery, groupId, userId).Scan(&userGroupId)
+	err = tx.QueryRow(updateQuery, groupId, userId).Scan(&userGroupId)
 	if err == nil {
 		return userGroupId, nil
 	}
@@ -650,7 +664,7 @@ func RemoveUserFromGroup(userId string, groupId string, db *sql.DB) error {
 		WHERE group_id = $1
 		AND user_id = $2;
 	`
-	_, err = db.Exec(removeUserGroupsQuery, userId, groupId)
+	_, err = db.Exec(removeUserGroupsQuery, groupId, userId)
 	if err != nil {
 		transactionErr := tx.Rollback()
 		if transactionErr != nil {
@@ -681,6 +695,7 @@ func RemoveUserFromGroup(userId string, groupId string, db *sql.DB) error {
 		WHERE group_id = $1
 		AND user_id = $2;
 	`
+
 	_, err = db.Exec(deleteRolesQuery, groupId, userId)
 	if err != nil {
 		transactionErr := tx.Rollback()

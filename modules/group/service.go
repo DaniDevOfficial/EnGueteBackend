@@ -651,7 +651,7 @@ func LeaveGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = RemoveUserFromGroup(groupData.GroupId, jwtPayload.UserId, db) //TODO: some check for if a user was eiter the last user in a group or if there are no admins left. If he was the last one delete the group and if he was the last admin pick a new one by join-date
+	err = RemoveUserFromGroup(jwtPayload.UserId, groupData.GroupId, db) //TODO: some check for if a user was eiter the last user in a group or if there are no admins left. If he was the last one delete the group and if he was the last admin pick a new one by join-date
 	if err != nil {
 		if errors.Is(err, ErrNoMatchingGroupOrUser) {
 			responses.GenericGroupDoesNotExistError(c.Writer)

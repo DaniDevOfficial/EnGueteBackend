@@ -57,7 +57,7 @@ func KickUserFromGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = group.RemoveUserFromGroup(kickUserData.GroupId, kickUserData.UserId, db)
+	err = group.RemoveUserFromGroup(kickUserData.UserId, kickUserData.GroupId, db)
 	if err != nil {
 		log.Println("error kicking user from group:", err)
 		responses.GenericInternalServerError(c.Writer)
@@ -115,7 +115,7 @@ func BanUserFromGroup(c *gin.Context, db *sql.DB) {
 	}
 
 	//TODO: either have a seperate function or a follow up, which adds the userId in a blacklist for this specific group
-	err = group.RemoveUserFromGroup(kickUserData.GroupId, kickUserData.UserId, db)
+	err = group.RemoveUserFromGroup(kickUserData.UserId, kickUserData.GroupId, db)
 	if err != nil {
 		responses.GenericInternalServerError(c.Writer)
 		return
