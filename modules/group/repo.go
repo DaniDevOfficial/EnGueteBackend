@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/lib/pq"
+	"log"
 )
 
 func CreateNewGroupInDBWithTransaction(groupData RequestNewGroup, userId string, tx *sql.Tx) (string, error) {
@@ -554,18 +555,20 @@ func LeaveGroupInDB(groupId string, userId string, tx *sql.Tx) error {
 }
 
 func GetAllGroupsForUser(userId string, db *sql.DB) ([]GroupInfo, error) {
+	log.Println(userId)
 	query := `
 		SELECT 
-			g.group_id,
-			g.group_name,
-			COUNT(DISTINCT ugAll.user_id) AS user_count,
-			ARRAY_AGG(COALESCE(ur.role, '')) AS user_roles
+    		g.group_id,
+    		g.group_name,
+    		COUNT(DISTINCT ugAll.user_id) AS user_count,
+    		ARRAY_AGG(DISTINCT ur.role) AS user_roles
 		FROM groups g 
 		INNER JOIN user_groups ug ON ug.group_id = g.group_id AND ug.user_id = $1
 		LEFT JOIN user_group_roles ur ON ur.group_id = g.group_id AND ur.user_id = $1
-		LEFT JOIN user_groups ugAll ON ug.group_id = g.group_id
+		LEFT JOIN user_groups ugAll ON ugAll.group_id = g.group_id
 		WHERE g.deleted_at IS NULL
 		AND ug.deleted_at IS NULL 
+		AND ugAll.deleted_at IS NULL
 		AND (
 		$2::timestamp IS NULL
 		OR GREATEST(
