@@ -2,27 +2,6 @@ package management
 
 import "database/sql"
 
-func KickUSerFromGroupInDB(userId string, groupId string, db *sql.DB) error {
-	query := `
-		UPDATE user_groups
-		SET deleted_at = NOW()
-		WHERE group_id = $1
-		AND user_id = $2;
-
-		UPDATE meal_preferences 
-		SET deleted_at = NOW()
-		WHERE group_id = $1
-		AND user_id = $2;
-
-		DELETE FROM user_group_roles
-		WHERE group_id = $1
-		AND user_id = $2;
-
-	` // TODO: remove any not closed optin out states for this user
-	_, err := db.Exec(query, userId, groupId)
-	return err
-}
-
 func UnBanUserFromGroupInDB(userId string, groupId string, db *sql.DB) error {
 	query := `
 	DELETE FROM user_groups_blacklist

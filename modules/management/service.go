@@ -9,6 +9,7 @@ import (
 	"enguete/util/roles"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 )
 
@@ -56,8 +57,9 @@ func KickUserFromGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = KickUSerFromGroupInDB(kickUserData.GroupId, kickUserData.UserId, db)
+	err = group.RemoveUserFromGroup(kickUserData.GroupId, kickUserData.UserId, db)
 	if err != nil {
+		log.Println("error kicking user from group:", err)
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
@@ -113,7 +115,7 @@ func BanUserFromGroup(c *gin.Context, db *sql.DB) {
 	}
 
 	//TODO: either have a seperate function or a follow up, which adds the userId in a blacklist for this specific group
-	err = KickUSerFromGroupInDB(kickUserData.GroupId, kickUserData.UserId, db)
+	err = group.RemoveUserFromGroup(kickUserData.GroupId, kickUserData.UserId, db)
 	if err != nil {
 		responses.GenericInternalServerError(c.Writer)
 		return

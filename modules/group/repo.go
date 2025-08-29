@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/lib/pq"
-	"log"
 )
 
 func CreateNewGroupInDBWithTransaction(groupData RequestNewGroup, userId string, tx *sql.Tx) (string, error) {
@@ -555,7 +554,7 @@ func LeaveGroupInDB(groupId string, userId string, tx *sql.Tx) error {
 }
 
 func GetAllGroupsForUser(userId string, db *sql.DB) ([]GroupInfo, error) {
-	log.Println(userId)
+
 	query := `
 		SELECT 
     		g.group_id,
@@ -635,4 +634,62 @@ func GetAllDeletedGroupsForUser(userId string, lastRequestDatetime *string, db *
 	}
 
 	return groupIds, nil
+}
+
+func RemoveUserFromGroup(userId string, groupId string, db *sql.DB) error {
+
+	tx, err := db.Begin()
+
+	if err != nil {
+		return err
+	}
+
+	removeUserGroupsQuery := `
+		UPDATE user_groups
+		SET deleted_at = NOW()
+		WHERE group_id = $1
+		AND user_id = $2;
+	`
+	_, err = db.Exec(removeUserGroupsQuery, userId, groupId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+
+	removePreferencesQuery := `
+		UPDATE meal_preferences mp
+		SET deleted_at = NOW()
+		FROM meals m
+		WHERE mp.meal_id = m.meal_id
+  		AND m.group_id = $1
+  		AND mp.user_id = $2;
+	`
+	_, err = db.Exec(removePreferencesQuery, groupId, userId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+
+	deleteRolesQuery := `
+		DELETE FROM user_group_roles
+		WHERE group_id = $1
+		AND user_id = $2;
+	`
+	_, err = db.Exec(deleteRolesQuery, groupId, userId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+
+	err = tx.Commit()
+	return err
 }
