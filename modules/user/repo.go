@@ -36,8 +36,9 @@ func GetUserByName(username string, db *sql.DB) (UserFromDB, error) {
 				user_id
  			FROM 
 				users
-			WHERE
-				username = $1`
+			WHERE username = $1
+			AND deleted_at IS NULL
+				`
 	row := db.QueryRow(query, username)
 	var userData UserFromDB
 	err := row.Scan(&userData.Username, &userData.Email, &userData.PasswordHash, &userData.UserId)
@@ -56,8 +57,9 @@ func GetUserByIdFromDB(userId string, db *sql.DB) (UserFromDB, error) {
     			user_id
     		FROM
     		    users
-    		WHERE 
-        		user_id = $1`
+    		WHERE user_id = $1
+    		AND deleted_at IS NULL
+    		`
 	row := db.QueryRow(query, userId)
 
 	var userData UserFromDB
@@ -75,16 +77,14 @@ func GetUsersGroupByUserIdFromDB(userId string, db *sql.DB) ([]GroupCard, error)
 			g.group_id,
 			g.group_name,
 			COUNT(DISTINCT ug.user_id) AS user_count
-		FROM
-			groups g
-		INNER JOIN 
-			user_groups ug ON g.group_id = ug.group_id
-		INNER JOIN 
-			users u ON ug.user_id = u.user_id
-		WHERE 
-			u.user_id = $1
-		GROUP BY
-			g.group_id
+		FROM groups g
+		INNER JOIN user_groups ug ON g.group_id = ug.group_id
+		INNER JOIN users u ON ug.user_id = u.user_id
+		WHERE u.user_id = $1
+		AND g.deleted_at IS NULL
+		AND u.deleted_at IS NULL
+		AND ug.deleted_at IS NULL
+		GROUP BY g.group_id
 	`
 	rows, err := db.Query(query, userId)
 	var userGroups []GroupCard
@@ -163,16 +163,82 @@ func UpdatePasswordInDb(newPassword string, userId string, db *sql.DB) error {
 	return err
 }
 
-func DeleteUserInDB(userId string, db *sql.DB) (bool, error) {
-	query := `	DELETE FROM 
-	           		users
-				WHERE 
-				    user_id = $1
-				`
-	_, err := db.Exec(query, userId)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
+func DeleteUserInDB(userId string, db *sql.DB) error {
 
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	updateUserQuery := `
+		UPDATE users
+		SET deleted_at = NOW()
+		WHERE user_id = $1 AND deleted_at IS NULL
+	`
+	_, err = tx.Exec(updateUserQuery, userId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+
+	updateUserGroupsQuery := `
+		UPDATE user_groups
+		SET deleted_at = NOW()
+		WHERE user_id = $1 AND deleted_at IS NULL
+	`
+	_, err = tx.Exec(updateUserGroupsQuery, userId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+
+	updateMealPreferencesQuery := `
+		UPDATE meal_preferences
+		SET deleted_at = NOW()
+		WHERE user_id = $1 AND deleted_at IS NULL
+	`
+	_, err = tx.Exec(updateMealPreferencesQuery, userId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+
+	deleteRefreshTokensQuery := `
+		DELETE FROM refresh_tokens
+		WHERE user_id = $1
+	`
+	_, err = tx.Exec(deleteRefreshTokensQuery, userId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+	deleteUserGroupRolesQuery := `
+		DELETE FROM user_group_roles
+		WHERE user_id = $1
+	`
+	_, err = tx.Exec(deleteUserGroupRolesQuery, userId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
 }

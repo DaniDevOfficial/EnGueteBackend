@@ -31,7 +31,7 @@ func registerUserRoutes(router *gin.Engine, db *sql.DB) {
 func registerAuthRoutes(router *gin.Engine, db *sql.DB) {
 
 	router.POST("/auth/signup", func(c *gin.Context) {
-		CreateNewUser(c, db)
+		SignUp(c, db)
 	})
 	router.POST("/auth/signin", func(c *gin.Context) {
 		SignIn(c, db)

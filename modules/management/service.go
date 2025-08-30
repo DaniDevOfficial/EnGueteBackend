@@ -9,6 +9,7 @@ import (
 	"enguete/util/roles"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 )
 
@@ -56,8 +57,9 @@ func KickUserFromGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	err = KickUSerFromGroupInDB(kickUserData.GroupId, kickUserData.UserId, db)
+	err = group.RemoveUserFromGroup(kickUserData.UserId, kickUserData.GroupId, db)
 	if err != nil {
+		log.Println("error kicking user from group:", err)
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
@@ -113,7 +115,7 @@ func BanUserFromGroup(c *gin.Context, db *sql.DB) {
 	}
 
 	//TODO: either have a seperate function or a follow up, which adds the userId in a blacklist for this specific group
-	err = KickUSerFromGroupInDB(kickUserData.GroupId, kickUserData.UserId, db)
+	err = group.RemoveUserFromGroup(kickUserData.UserId, kickUserData.GroupId, db)
 	if err != nil {
 		responses.GenericInternalServerError(c.Writer)
 		return
@@ -215,6 +217,16 @@ func AddRoleToUser(c *gin.Context, db *sql.DB) {
 	}
 	if !canPerformAction {
 		responses.GenericNotAllowedToPerformActionError(c.Writer)
+		return
+	}
+
+	inGroup, err := group.IsUserInGroup(roleData.GroupId, roleData.UserId, db)
+	if err != nil {
+		responses.GenericInternalServerError(c.Writer)
+		return
+	}
+	if !inGroup {
+		responses.HttpErrorResponse(c.Writer, http.StatusBadRequest, frontendErrors.UserDoesNotExistError, "User does not exist in this group")
 		return
 	}
 

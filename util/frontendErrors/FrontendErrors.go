@@ -1,7 +1,6 @@
 package frontendErrors
 
 const (
-	//Generic Errors
 	UnauthorizedError   = "unauthorizedError"
 	ForbiddenError      = "forbiddenError"
 	NotFoundError       = "notFoundError"

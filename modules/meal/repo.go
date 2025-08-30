@@ -24,9 +24,41 @@ func CreateNewMealInDBWithTransaction(newMeal RequestNewMeal, userId string, db 
 }
 
 func DeleteMealInDB(mealId string, db *sql.DB) error {
-	query := `DELETE FROM meals WHERE meal_id=$1`
-	_, err := db.Exec(query, mealId)
-	return err
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	updateMealQuery := `
+		UPDATE meals
+		SET deleted_at = NOW()
+		WHERE meal_id = $1 AND deleted_at IS NULL
+	`
+	_, err = tx.Exec(updateMealQuery, mealId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+
+	updatePreferencesQuery := `
+		UPDATE meal_preferences
+		SET deleted_at = NOW()
+		WHERE meal_id = $1 AND deleted_at IS NULL
+	`
+	_, err = tx.Exec(updatePreferencesQuery, mealId)
+	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return transactionErr
+		}
+		return err
+	}
+
+	return nil
 }
 
 var ErrNoData = errors.New("no data found")
@@ -49,7 +81,8 @@ func GetSingularMealInformation(mealId string, userId string, db *sql.DB) (MealI
         LEFT JOIN meal_preferences mp ON mp.meal_id = m.meal_id AND mp.deleted_at IS NULL
         LEFT JOIN meal_preferences user_pref ON user_pref.meal_id = m.meal_id AND user_pref.user_id = $2 AND user_pref.deleted_at IS NULL
         WHERE m.meal_id = $1
-        GROUP BY m.meal_id, user_pref.preference, user_pref.is_cook
+        AND m.deleted_at IS NULL
+        GROUP BY m.meal_id, user_pref.preference, user_pref.is_cook, m.date_time
         ORDER BY m.date_time
 `
 	var mealInformation MealInformation
@@ -78,22 +111,26 @@ func GetSingularMealInformation(mealId string, userId string, db *sql.DB) (MealI
 
 func GetMealParticipationInformationFromDB(mealId string, db *sql.DB) ([]MealPreferences, error) {
 	query := `
-		SELECT 
-    		u.user_id,
-    		$1 AS meal_id,
-    		ug.user_group_id,
-    		mp.preference_id,
-    		u.username,
-    		COALESCE(mp.preference, 'undecided') AS preference,
-    		COALESCE(mp.is_cook, FALSE) AS is_cook
-
-		FROM users u
-		LEFT JOIN meal_preferences mp ON u.user_id = mp.user_id AND mp.meal_id = $1
-		LEFT JOIN meals m ON m.meal_id = $1
-		INNER JOIN user_groups ug ON u.user_id = ug.user_id AND ug.group_id = m.group_id
-		WHERE mp.meal_id = $1 
-		AND (mp.deleted_at IS NULL);
-`
+			SELECT 
+				u.user_id,
+				$1 AS meal_id,
+				ug.user_group_id,
+				mp.preference_id,
+				u.username,
+				mp.preference AS preference,
+				mp.is_cook AS is_cook
+	
+			FROM users u
+			INNER JOIN meal_preferences mp ON u.user_id = mp.user_id AND mp.meal_id = $1
+			INNER JOIN meals m ON m.meal_id = $1
+			INNER JOIN user_groups ug ON u.user_id = ug.user_id AND ug.group_id = m.group_id
+			WHERE mp.meal_id = $1
+			AND u.deleted_at IS NULL
+			AND mp.deleted_at IS NULL
+			AND m.deleted_at IS NULL
+			AND ug.deleted_at IS NULL
+			;
+	`
 	rows, err := db.Query(query, mealId)
 	var mealParticipants []MealPreferences
 	if err != nil {
@@ -210,14 +247,17 @@ var ErrUserAlreadyHasAPreferenceInSpecificMeal = errors.New("user already has A 
 // Flags
 
 func UpdateClosedBoolInDB(mealId string, isClosed bool, db *sql.DB) error {
-	query := `UPDATE meals SET closed=$1 WHERE meal_id=$2 RETURNING closed` // TODO Swap the closed bool from what it currently is
+	query := `UPDATE meals SET closed=$1 WHERE meal_id=$2 AND deleted_at IS NULL RETURNING closed` // TODO Swap the closed bool from what it currently is
+
+	//TODO: delete all preference that are 'undecided' when opening a meal also set all current members to 'undecided' when closing a meal and store in the db for future reference
+
 	var tmp bool
 	err := db.QueryRow(query, isClosed, mealId).Scan(&tmp)
 	return err
 }
 
 func UpdateMealFulfilledStatus(mealId string, isFulfilled bool, db *sql.DB) error {
-	query := `UPDATE meals SET fulfilled=$1 WHERE meal_id=$2 RETURNING fulfilled` // TODO Swap the closed bool from what it currently is
+	query := `UPDATE meals SET fulfilled=$1 WHERE meal_id=$2 AND deleted_at IS NULL RETURNING fulfilled` // TODO Swap the closed bool from what it currently is
 	var tmp bool
 	err := db.QueryRow(query, isFulfilled, mealId).Scan(&tmp)
 	return err
@@ -230,7 +270,7 @@ func ChangeOptInStatusMealInDB(userId string, mealId string, preference string, 
         INSERT INTO meal_preferences (meal_id, user_id, preference, updated_at)
         VALUES ($1, $2, $3, $4)
         ON CONFLICT (meal_id, user_id)
-        DO UPDATE 
+        DO UPDATE
         SET preference = EXCLUDED.preference,
             updated_at = EXCLUDED.updated_at;`
 
@@ -340,7 +380,7 @@ func GetAllMealsInGroupInTimeframe(groupId string, userId string, startDate stri
             m.date_time,
             m.meal_type,
             m.notes,
-            COUNT(CASE WHEN mp.preference = 'opt-in' OR mp.preference = 'eat later' THEN 1 END) AS participant_count,
+    		SUM(CASE WHEN mp.preference != 'undecided' THEN 1 ELSE 0 END) AS participant_count,
             COALESCE(user_pref.preference, 'undecided') AS user_preference,
             COALESCE(user_pref.is_cook, FALSE) AS is_cook
         FROM meals m
@@ -349,7 +389,7 @@ func GetAllMealsInGroupInTimeframe(groupId string, userId string, startDate stri
         WHERE m.group_id = $1
     	AND m.deleted_at IS NULL
         AND (m.date_time BETWEEN $3 AND $4)
-		GROUP BY m.meal_id, user_pref.preference, user_pref.is_cook
+		GROUP BY m.meal_id, user_pref.preference, user_pref.is_cook, m.date_time
         ORDER BY m.date_time desc 
 `
 	rows, err := db.Query(query, groupId, userId, startDate, endDate)

@@ -106,14 +106,18 @@ func GetMealById(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	//TODO: if meal is closed dont get this data and just say that the ones with a preference are sent back (this is so we have accurate historical data)
-	participationInformationWithoutPreference, err := GetGroupMembersNotParticipatingInMeal(mealInfo.MealId, groupId, db)
-	if err != nil {
-		responses.GenericInternalServerError(c.Writer)
-		return
+	participationInformation := participationInformationWithPreference
+
+	var participationInformationWithoutPreference []MealPreferences
+	if !mealInformation.Closed {
+		participationInformationWithoutPreference, err = GetGroupMembersNotParticipatingInMeal(mealInfo.MealId, groupId, db)
+		if err != nil {
+			responses.GenericInternalServerError(c.Writer)
+			return
+		}
 	}
 
-	participationInformation := MergeAndSortParticipants(participationInformationWithPreference, participationInformationWithoutPreference)
+	participationInformation = MergeAndSortParticipants(participationInformation, participationInformationWithoutPreference)
 	meal := Meal{
 		MealInformation:           mealInformation,
 		MealPreferenceInformation: participationInformation,
@@ -164,7 +168,7 @@ func DeleteMeal(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// here we dont send a update, because the user will be redirected to the all page, where a api request will happen regardeless
+	// here we don't send a update, because the user will be redirected to the all page, where a api request will happen regardless
 	c.JSON(http.StatusOK, MealSuccess{Message: "Meal Sucessfuly deleted"})
 }
 

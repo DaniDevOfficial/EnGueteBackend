@@ -86,16 +86,6 @@ func GetConstViaString(roleName string) string {
 	}
 }
 
-func GetAllRoleRightsForARole(role string) []string {
-	var allowedActions []string
-	for _, action := range RolePermissions {
-		if action[role] == true {
-			allowedActions = append(allowedActions, role)
-		}
-	}
-	return allowedActions
-}
-
 func GetAllAllowedActionsForRoles(roles []string) []string {
 	var allowedActions []string
 	for permission := range RolePermissions {

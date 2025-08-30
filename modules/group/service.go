@@ -476,6 +476,8 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 
 	isMember, err := IsUserInGroup(groupId, jwtPayload.UserId, db)
 	if err != nil {
+		log.Println(err)
+
 		responses.HttpErrorResponse(c.Writer, http.StatusInternalServerError, frontendErrors.InternalServerError, "Internal server error")
 		return
 	}
@@ -487,6 +489,8 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 
 	tx, err := db.Begin()
 	if err != nil {
+		log.Println(err)
+
 		c.JSON(http.StatusInternalServerError, GroupError{Error: "Internal server error"})
 		return
 	}
@@ -494,6 +498,7 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 	userGroupId, err := AddUserToGroupWithTransaction(groupId, jwtPayload.UserId, tx)
 	if err != nil {
 		_ = tx.Rollback()
+		log.Println(err)
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
@@ -501,12 +506,16 @@ func JoinGroupWithInviteToken(c *gin.Context, db *sql.DB) {
 	err = AddRoleToUserInGroupWithTransaction(groupId, jwtPayload.UserId, roles.MemberRole, userGroupId, tx)
 	if err != nil {
 		_ = tx.Rollback()
+		log.Println(err)
+
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
 
 	err = tx.Commit()
 	if err != nil {
+		log.Println(err)
+
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}
@@ -642,34 +651,12 @@ func LeaveGroup(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	tx, err := db.Begin()
+	err = RemoveUserFromGroup(jwtPayload.UserId, groupData.GroupId, db) //TODO: some check for if a user was eiter the last user in a group or if there are no admins left. If he was the last one delete the group and if he was the last admin pick a new one by join-date
 	if err != nil {
-		responses.GenericInternalServerError(c.Writer)
-		return
-	}
-
-	err = LeaveGroupInDB(groupData.GroupId, jwtPayload.UserId, tx) //TODO: some check for if a user was eiter the last user in a group or if there are no admins left. If he was the last one delete the group and if he was the last admin pick a new one by join-date
-	if err != nil {
-		_ = tx.Rollback()
 		if errors.Is(err, ErrNoMatchingGroupOrUser) {
 			responses.GenericGroupDoesNotExistError(c.Writer)
 			return
 		}
-		responses.GenericInternalServerError(c.Writer)
-		return
-	}
-
-	err = RemovePreferencesInOpenMealsInGroup(jwtPayload.UserId, groupData.GroupId, tx)
-
-	if err != nil {
-		err = tx.Rollback()
-		responses.GenericInternalServerError(c.Writer)
-		return
-	}
-	//TODO: delete roles
-	//TODO: delete isCook
-	err = tx.Commit()
-	if err != nil {
 		responses.GenericInternalServerError(c.Writer)
 		return
 	}

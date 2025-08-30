@@ -14,7 +14,7 @@ import (
 	"net/http"
 )
 
-// CreateNewUser godoc
+// SignUp godoc
 // @Summary Create a new user
 // @Description Create a new user with password and username validation.
 // @Tags users
@@ -25,7 +25,7 @@ import (
 // @Failure 400 {object} UserError "Invalid request data or username already exists"
 // @Failure 500 {object} UserError "Server error creating user"
 // @Router /auth/signup [post]
-func CreateNewUser(c *gin.Context, db *sql.DB) {
+func SignUp(c *gin.Context, db *sql.DB) {
 
 	var newUser RequestNewUser
 	if err := c.ShouldBindJSON(&newUser); err != nil {
@@ -291,7 +291,7 @@ func DeleteUserWithJWT(c *gin.Context, db *sql.DB) {
 	}
 
 	// TODO: Do a email for validation and then handle the delete in another function
-	_, err = DeleteUserInDB(decodedJWT.UserId, db)
+	err = DeleteUserInDB(decodedJWT.UserId, db)
 	if err != nil {
 		responses.GenericInternalServerError(c.Writer)
 		return
