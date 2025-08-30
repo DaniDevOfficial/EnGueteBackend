@@ -34,6 +34,10 @@ func AddUserToGroupWithTransaction(groupId string, userId string, tx *sql.Tx) (s
 	`
 	_, err := tx.Exec(activatePreferencesAgainQuery, groupId, userId)
 	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return "", transactionErr
+		}
 		return "", err
 	}
 
@@ -45,9 +49,17 @@ func AddUserToGroupWithTransaction(groupId string, userId string, tx *sql.Tx) (s
 	`
 	err = tx.QueryRow(updateQuery, groupId, userId).Scan(&userGroupId)
 	if err == nil {
+		transactionErr := tx.Commit()
+		if transactionErr != nil {
+			return "", transactionErr
+		}
 		return userGroupId, nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return "", transactionErr
+		}
 		return "", err
 	}
 
@@ -58,7 +70,16 @@ func AddUserToGroupWithTransaction(groupId string, userId string, tx *sql.Tx) (s
 	`
 	err = tx.QueryRow(insertQuery, groupId, userId).Scan(&userGroupId)
 	if err != nil {
+		transactionErr := tx.Rollback()
+		if transactionErr != nil {
+			return "", transactionErr
+		}
 		return "", err
+	}
+
+	transactionErr := tx.Commit()
+	if transactionErr != nil {
+		return "", transactionErr
 	}
 
 	return userGroupId, nil
